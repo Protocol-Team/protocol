@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <script src="./env.local.js"></script>
+  <script src="./env.production.js"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Trace Protocol MVP</title>
@@ -216,6 +216,18 @@
     </main>
   </div>
 
-  <script type="module" src="./js/game.js?v=20260724-right-angle-wall-climb"></script>
+  <script type="module">
+    const localHostnames = new Set(["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]);
+
+    if (localHostnames.has(globalThis.location.hostname)) {
+      try {
+        await import("./env.local.js");
+      } catch {
+        // env.local.js is optional; keep the production configuration.
+      }
+    }
+
+    await import("./js/game.js?v=20260724-right-angle-wall-climb");
+  </script>
 </body>
 </html>
