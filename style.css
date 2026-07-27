@@ -781,6 +781,75 @@ button.secondary {
   box-shadow: 0 0 24px rgba(24, 224, 255, 0.28);
 }
 
+.lobby-auth-panel {
+  display: grid;
+  gap: 10px;
+  width: min(320px, 100%);
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(24, 224, 255, 0.18);
+}
+
+.lobby-auth-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #dff9ff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.lobby-auth-user {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 28px;
+  color: #dff9ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.lobby-auth-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(24, 224, 255, 0.42);
+}
+
+.lobby-auth-email {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lobby-auth-message {
+  margin: 0;
+  color: #9ac7d6;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.lobby-auth-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.lobby-auth-panel .lobby-button {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
 .lobby-mode-panel {
   position: absolute;
   z-index: 3;

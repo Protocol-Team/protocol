@@ -56,6 +56,13 @@ export function initLobby({
   const dailyUsbCount = document.getElementById("dailyUsbCount");
   const totalUsbCount = document.getElementById("totalUsbCount");
   const dailyUsbHistoryList = document.getElementById("dailyUsbHistoryList");
+  const authPanel = createAuthPanel();
+  const authUser = authPanel.querySelector(".lobby-auth-user");
+  const authAvatar = authPanel.querySelector(".lobby-auth-avatar");
+  const authEmail = authPanel.querySelector(".lobby-auth-email");
+  const authMessage = authPanel.querySelector(".lobby-auth-message");
+  const authLoginBtn = authPanel.querySelector(".lobby-auth-login");
+  const authLogoutBtn = authPanel.querySelector(".lobby-auth-logout");
 
   let active = true;
   let helpOverlayOpen = false;
@@ -65,9 +72,14 @@ export function initLobby({
   let pendingPurchaseSkinId = "";
   let enteringLobby = false;
   let lastMissionDateKey = "";
+  let authService = null;
+  let authSession = null;
+  let authLoading = true;
+  let authError = "";
 
   document.body.classList.add("lobby-active");
   startBtn?.after(modePanel);
+  lobbyScreen?.querySelector(".lobby-panel")?.appendChild(authPanel);
   root?.appendChild(stageSelectPanel);
   skinBtn?.after(skinPanel);
   root?.appendChild(skinPurchaseModal);
@@ -121,6 +133,76 @@ export function initLobby({
   updateDailyMissionCountdown();
   window.setInterval(updateDailyMissionCountdown, 1000);
   window.addEventListener("protocol:daily-mission-update", (event) => refreshDailyMission(event.detail));
+
+  const getAuthAvatarUrl = (session) => {
+    const metadata = session?.user?.user_metadata || {};
+    return metadata.avatar_url || metadata.picture || "";
+  };
+
+  const renderAuthPanel = () => {
+    const user = authSession?.user || null;
+    const signedIn = Boolean(user);
+    const configured = Boolean(authService?.isAuthConfigured?.());
+    const avatarUrl = getAuthAvatarUrl(authSession);
+
+    authUser?.classList.toggle("hidden", !signedIn);
+    authLoginBtn?.classList.toggle("hidden", signedIn);
+    authLogoutBtn?.classList.toggle("hidden", !signedIn);
+    if (authEmail) authEmail.textContent = user?.email || "Google user";
+    if (authAvatar) {
+      authAvatar.classList.toggle("hidden", !avatarUrl);
+      if (avatarUrl) authAvatar.src = avatarUrl;
+      else authAvatar.removeAttribute("src");
+    }
+    if (authMessage) {
+      authMessage.textContent = authLoading
+        ? "Checking login..."
+        : authError || (
+            !configured
+              ? "Google login unavailable."
+              : signedIn ? "Google connected" : "Sign in to enable Cloud Save."
+          );
+    }
+    if (authLoginBtn) {
+      authLoginBtn.disabled = authLoading || !configured;
+      authLoginBtn.textContent = authLoading ? "CHECKING..." : "Google Login";
+    }
+    if (authLogoutBtn) {
+      authLogoutBtn.disabled = authLoading;
+      authLogoutBtn.textContent = authLoading ? "WAIT..." : "Logout";
+    }
+  };
+
+  const showAuthError = (message) => {
+    authError = message;
+    authLoading = false;
+    renderAuthPanel();
+  };
+
+  const initializeAuth = async () => {
+    renderAuthPanel();
+    try {
+      authService = await import("./services/authService.js");
+    } catch {
+      showAuthError("Google login unavailable.");
+      return;
+    }
+
+    authService.onAuthStateChange((event, session) => {
+      authSession = session || null;
+      authLoading = false;
+      authError = "";
+      renderAuthPanel();
+    });
+
+    const result = await authService.getCurrentSession();
+    authSession = result.session || null;
+    authError = result.ok || result.reason === "supabase-not-configured"
+      ? ""
+      : "Login status unavailable.";
+    authLoading = false;
+    renderAuthPanel();
+  };
 
   const getPurchasedSkins = () => {
     return new Set(loadPurchasedSkins());
@@ -330,6 +412,39 @@ export function initLobby({
     enterLobby();
   });
 
+  authLoginBtn?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!authService || authLoading) return;
+    authLoading = true;
+    authError = "";
+    renderAuthPanel();
+    const result = await authService.signInWithGoogle();
+    if (!result.ok) {
+      showAuthError("Google login failed.");
+      return;
+    }
+    authLoading = false;
+    renderAuthPanel();
+  });
+
+  authLogoutBtn?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!authService || authLoading) return;
+    authLoading = true;
+    authError = "";
+    renderAuthPanel();
+    const result = await authService.signOut();
+    if (!result.ok) {
+      showAuthError("Logout failed.");
+      return;
+    }
+    authSession = null;
+    authLoading = false;
+    renderAuthPanel();
+  });
+
   document.addEventListener("keydown", (event) => {
     if (event.code !== "Enter" && event.code !== "Space") return;
     enterLobby();
@@ -501,6 +616,7 @@ export function initLobby({
       })
     : null;
   observer?.observe(overlay, { attributes: true, attributeFilter: ["class"] });
+  initializeAuth();
 
   return {
     showLobby,
@@ -509,6 +625,25 @@ export function initLobby({
     refreshModeButtons,
     showStageSelect,
   };
+}
+
+function createAuthPanel() {
+  const panel = document.createElement("div");
+  panel.className = "lobby-auth-panel";
+  panel.setAttribute("aria-live", "polite");
+  panel.innerHTML = `
+    <div class="lobby-auth-heading"><span aria-hidden="true">☁</span><strong>Protocol Account</strong></div>
+    <div class="lobby-auth-user hidden">
+      <img class="lobby-auth-avatar hidden" alt="" referrerpolicy="no-referrer" />
+      <span class="lobby-auth-email"></span>
+    </div>
+    <p class="lobby-auth-message">Sign in to enable Cloud Save.</p>
+    <div class="lobby-auth-actions">
+      <button class="lobby-button lobby-auth-login" type="button">Google Login</button>
+      <button class="lobby-button lobby-auth-logout hidden" type="button">Logout</button>
+    </div>
+  `;
+  return panel;
 }
 
 function createStageSelectPanel() {
