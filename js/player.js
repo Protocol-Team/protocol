@@ -255,7 +255,7 @@ export function updateAttack(game, dt, keys, flashLog, endStage) {
   }
 
   if (h.hp <= 0) {
-    endStage(false, "해커가 무력화되었습니다.");
+    endStage(false, "해커가 무력화되었습니다.", { reason: "death" });
   }
 }
 
@@ -859,7 +859,9 @@ function applyAttackHazards(h, game, flashLog) {
     }
     const overlapsHazard = rectsOverlap(h, getHazardHitbox(hazard, game));
     if (hazard.type === "camera") {
-      const cameraDetectsHacker = overlapsHazard && isEntityInCameraView(h, hazard, game);
+      // Camera detection is range-based, not body-collision-based. This lets
+      // the left diagonal slice of the camera's range detect the hacker.
+      const cameraDetectsHacker = isEntityInCameraView(h, hazard, game);
       if (!cameraDetectsHacker) {
         hazard.cameraEmpowerConsumed = false;
         continue;

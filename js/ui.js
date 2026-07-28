@@ -13,10 +13,13 @@ import {
   SHOCK_SLOW_MULTIPLIER,
 } from "./data.js?v=20260723-shield-module";
 import {
+  CAMERA_W,
   getCameraHazardBox,
+  getCameraDetectionPolygonFromBox,
+  getCameraBodyBoxFromBox,
   getCameraEmpowerAssignments,
   getOrientedTrapBox,
-} from "./trap.js?v=20260724-camera-placement-order";
+} from "./trap.js?v=20260729-camera-triangle-tutorial-v2";
 import {
   getBackgroundBgmEnabled,
   getBgmVolume,
@@ -42,6 +45,8 @@ const TRAP_IMAGE_BASE_URL = new URL("../assets/images/traps/", import.meta.url);
 const STAGE_IMAGE_BASE_URL = new URL("../assets/images/stage/", import.meta.url);
 const BACKGROUND_IMAGE_BASE_URL = new URL("../assets/images/Background_image/", import.meta.url);
 const ASSET_VERSION = "20260711-mobile-polish";
+const CAMERA_ART_BASE_OFFSET_RATIO = 0.28;
+const CAMERA_PURPLE_PULSE_SPEED = 1.5;
 const TRAP_IMAGE_FILES = {
   laser: "laser.png",
   laserEmpowered: "laser-empowered.png",
@@ -74,6 +79,7 @@ const GROUND_TILE_PATTERN = [
 ];
 const CHECKPOINT_FRAME_SECONDS = 0.65;
 const trapImages = createTrapImages();
+const cameraArtLayers = new WeakMap();
 const stageImages = createStageImages();
 const backgroundImages = createBackgroundImages();
 const HACKER_IMAGE_BASE_URL = new URL("../assets/images/hacker_new_frames/", import.meta.url);
@@ -301,6 +307,78 @@ function isImageLoading(image) {
   return Boolean(image && !image.complete);
 }
 
+function getCameraArtLayers(image) {
+  if (!isImageReady(image)) return null;
+
+  const width = image.naturalWidth;
+  const height = image.naturalHeight;
+  const cached = cameraArtLayers.get(image);
+  if (cached?.width === width && cached?.height === height) return cached;
+
+  try {
+    const sourceCanvas = document.createElement("canvas");
+    sourceCanvas.width = width;
+    sourceCanvas.height = height;
+    const sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
+    sourceContext.drawImage(image, 0, 0);
+
+    const sourcePixels = sourceContext.getImageData(0, 0, width, height).data;
+    const bodyCanvas = document.createElement("canvas");
+    const purpleCanvas = document.createElement("canvas");
+    bodyCanvas.width = width;
+    bodyCanvas.height = height;
+    purpleCanvas.width = width;
+    purpleCanvas.height = height;
+    const bodyContext = bodyCanvas.getContext("2d");
+    const purpleContext = purpleCanvas.getContext("2d");
+    const bodyPixels = bodyContext.createImageData(width, height);
+    const purplePixels = purpleContext.createImageData(width, height);
+    let purplePixelCount = 0;
+
+    for (let index = 0; index < sourcePixels.length; index += 4) {
+      const red = sourcePixels[index];
+      const green = sourcePixels[index + 1];
+      const blue = sourcePixels[index + 2];
+      const alpha = sourcePixels[index + 3];
+      const isPurple = alpha > 10 &&
+        red > 70 &&
+        blue > 70 &&
+        red > green * 1.18 &&
+        blue > green * 1.12 &&
+        Math.max(red, blue) - green > 24;
+
+      if (isPurple) {
+        purplePixels.data[index] = red;
+        purplePixels.data[index + 1] = green;
+        purplePixels.data[index + 2] = blue;
+        purplePixels.data[index + 3] = alpha;
+        purplePixelCount += 1;
+      } else {
+        bodyPixels.data[index] = red;
+        bodyPixels.data[index + 1] = green;
+        bodyPixels.data[index + 2] = blue;
+        bodyPixels.data[index + 3] = alpha;
+      }
+    }
+
+    bodyContext.putImageData(bodyPixels, 0, 0);
+    purpleContext.putImageData(purplePixels, 0, 0);
+    const layers = {
+      width,
+      height,
+      body: bodyCanvas,
+      purple: purplePixelCount > 0 ? purpleCanvas : null,
+    };
+    cameraArtLayers.set(image, layers);
+    return layers;
+  } catch {
+    // If pixel access is unavailable, keep rendering the original asset.
+    const layers = { width, height, body: image, purple: null };
+    cameraArtLayers.set(image, layers);
+    return layers;
+  }
+}
+
 function getTrapImageAspect(type) {
   const image = trapImages[type];
   if (!isImageReady(image)) return 1;
@@ -368,6 +446,9 @@ export function initUI(callbacks) {
   let reopenTrapToolsTimer = null;
   let selectedTrapPreview = null;
   let pointerTrapPreviewPos = null;
+  let pointerHoverPos = null;
+  let activePointerPos = null;
+  let activePointerId = null;
   let attackSkillsPanelOpen = false;
   let settingsPanelOpen = false;
   const keys = new Set();
@@ -547,7 +628,7 @@ export function initUI(callbacks) {
         ["attackTime", "⏱", "공격 시간 +5초", "현재 공격 턴의 제한 시간이 5초 늘어납니다.", "attack"],
         ["energyMax", "⚡", "에너지 최대치 +20", "최대 에너지를 20 늘리고 즉시 충전합니다.", "attack"],
         ["shieldModule", "◇", "실드모듈", "해킹 중 무적 시간이 0.5초 늘어납니다.", "attack"],
-        ["revive", "✚", "부활", "DARK WEB에서 1회 부활합니다. 이번 게임에서 1회만 사용할 수 있습니다.", "any"],
+        ["revive", "✚", "부활", "DARK WEB 추가 목숨을 모두 소진한 뒤 1회 부활합니다.", "any"],
         ["replay", "↻", "해커턴 재생", "수비 리플레이를 한 번 더 시도합니다.", "defense"],
       ];
       for (const [id, icon, name, desc, turnType] of itemDefinitions) {
@@ -1077,11 +1158,16 @@ export function initUI(callbacks) {
   function updateFailureItemButtons(game) {
     const items = game.items || {};
     const failedTurnType = game.failureContext?.turn === TURN.DEFENSE_REPLAY ? "defense" : "attack";
+    const darkWebReviveAvailable = game.mode === "darkweb" &&
+      game.failureContext?.turn === TURN.ATTACK &&
+      (game.darkWeb?.livesRemaining || 0) <= 0 &&
+      game.darkWeb?.reviveAvailable &&
+      !game.darkWeb?.reviveUsed;
     ui.overlayCard?.querySelectorAll(".failure-item-button").forEach((button) => {
       const id = button.dataset.item;
       const turnMismatch = button.dataset.itemTurn !== "any" && button.dataset.itemTurn !== failedTurnType;
-      const darkWebRequiresRevive = game.mode === "darkweb" && id !== "revive" && !game.darkWeb?.reviveUsed;
-      const unavailable = !items[id] || (id === "revive" && game.mode !== "darkweb") || turnMismatch || darkWebRequiresRevive;
+      const reviveUnavailable = id === "revive" && !darkWebReviveAvailable;
+      const unavailable = !items[id] || reviveUnavailable || turnMismatch;
       button.disabled = unavailable;
       button.classList.toggle("used", !items[id]);
       button.classList.toggle("hidden", (id === "revive" && game.mode !== "darkweb") || turnMismatch);
@@ -1656,6 +1742,21 @@ export function initUI(callbacks) {
 
   function formatPercent(value) {
     return `${Math.round(value * 100)}%`;
+  }
+
+  function isCameraRangeVisible(x, y, w, h) {
+    const points = [activePointerPos, pointerHoverPos].filter(Boolean);
+    if (points.length === 0) return false;
+
+    const body = getCameraBodyBoxFromBox({ x, y, w, h });
+    const horizontalPadding = 16;
+    const topPadding = Math.min(28, h * 0.34);
+    return points.some((point) => (
+      point.x >= body.x - horizontalPadding &&
+      point.x <= body.x + body.w + horizontalPadding &&
+      point.y >= body.y - topPadding &&
+      point.y <= body.y + body.h + 14
+    ));
   }
 
   function draw(game) {
@@ -2268,18 +2369,24 @@ export function initUI(callbacks) {
       ctx.save();
       const x = Math.round(xCenter - VISUAL_SLOT_W / 2);
       const y = Math.round(yTop - VISUAL_SLOT_H - 2);
+      const discounted = !slot.blocked && Number(slot.costDiscount) > 0;
       if (slot.blocked) {
         ctx.strokeStyle = "rgba(255, 43, 139, 0.92)";
         ctx.fillStyle = "rgba(255, 43, 139, 0.24)";
+      } else if (discounted) {
+        ctx.strokeStyle = "rgba(255, 204, 51, 0.98)";
+        ctx.fillStyle = "rgba(255, 204, 51, 0.16)";
       } else {
         ctx.strokeStyle = "rgba(24,224,255,0.42)";
         ctx.fillStyle = "rgba(24,224,255,0.055)";
       }
       if (slot.blocked) {
         drawSlotGlitch(ctx, x, y, VISUAL_SLOT_W, VISUAL_SLOT_H);
+      } else if (discounted) {
+        drawDiscountSlotEffect(ctx, x, y, VISUAL_SLOT_W, VISUAL_SLOT_H, slot.costDiscount);
       }
 
-      ctx.lineWidth = slot.blocked ? 2 : 1;
+      ctx.lineWidth = slot.blocked || discounted ? 2 : 1;
       roundRect(ctx, x, y, VISUAL_SLOT_W, VISUAL_SLOT_H, 2);
       ctx.fill();
       ctx.stroke();
@@ -2293,6 +2400,26 @@ export function initUI(callbacks) {
       ctx.fillRect(x + 12, y + VISUAL_SLOT_H - 3, VISUAL_SLOT_W - 24, 1);
       ctx.restore();
     }
+  }
+
+  function drawDiscountSlotEffect(ctx, x, y, w, h, discount) {
+    const t = performance.now() / 1000;
+    const pulse = 0.55 + Math.sin(t * 7.5 + x * 0.03) * 0.22;
+
+    ctx.save();
+    ctx.shadowColor = "#ffcc33";
+    ctx.shadowBlur = 12 + pulse * 8;
+    ctx.strokeStyle = `rgba(255, 236, 159, ${Math.min(1, pulse + 0.3)})`;
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, x - 4, y - 4, w + 8, h + 8, 4);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#ffec9f";
+    ctx.font = "bold 10px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(`-${Math.max(1, Number(discount) || 1)}`, x + w / 2, y - 5);
+    ctx.restore();
   }
 
   function drawSlotGlitch(ctx, x, y, w, h) {
@@ -2458,48 +2585,112 @@ export function initUI(callbacks) {
   }
 
   function drawCamera(ctx, x, y, w, h, state = null) {
-    if (drawTrapImage(ctx, trapImages.camera, x, y, w, h, { type: "camera" })) return;
-
-    const bodyW = Math.min(56, w * 0.5);
-    const bodyH = Math.min(36, h * 0.32);
-    const bodyX = x + w - bodyW - 2;
-    const bodyY = y;
-    const coneTopLeft = { x: bodyX + 4, y: bodyY + bodyH };
-    const coneTopRight = { x: bodyX + bodyW - 10, y: bodyY + bodyH };
-    const coneBottomRight = { x: coneTopRight.x, y: y + h };
-    const coneBottomLeft = { x: x + 8, y: y + h };
-
     const hacked = (state?.hackedTime || 0) > 0;
     const pending = (state?.hackPendingTime || 0) > 0;
     const flicker = getHackFlicker(state);
+    const purplePulse = getCameraPurplePulse();
+    const rangeVisible = isCameraRangeVisible(x, y, w, h);
+    const rangePolygon = getCameraDetectionPolygonFromBox({ x, y, w, h });
+    const imageDrawn = drawClippedCameraImage(
+      ctx,
+      trapImages.camera,
+      x,
+      y,
+      w,
+      h,
+      rangePolygon,
+      hacked || pending ? flicker.alpha : 1,
+      purplePulse
+    );
+
+    if (!imageDrawn) drawCameraFallback(ctx, x, y, w, h, state, rangePolygon, purplePulse, rangeVisible);
+    drawCameraRangeOverlay(ctx, rangePolygon, x, y, w, hacked, pending, flicker, rangeVisible);
+  }
+
+  function drawClippedCameraImage(ctx, image, x, y, w, h, polygon, alpha = 1, purplePulse = 1) {
+    if (!isImageReady(image) || !Array.isArray(polygon) || polygon.length < 3) return false;
+
+    const box = getTrapVisualBox("camera", x, y, w, h);
+    const layers = getCameraArtLayers(image);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(polygon[0].x, polygon[0].y);
+    for (const point of polygon.slice(1)) ctx.lineTo(point.x, point.y);
+    ctx.closePath();
+    ctx.clip();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(layers?.body || image, box.x, box.y, box.w, box.h);
+    if (layers?.purple) {
+      ctx.globalAlpha = alpha * purplePulse;
+      ctx.drawImage(layers.purple, box.x, box.y, box.w, box.h);
+    }
+    ctx.restore();
+    return true;
+  }
+
+  function drawCameraFallback(ctx, x, y, w, h, state, rangePolygon, purplePulse = 1, rangeVisible = false) {
+    const body = getCameraBodyBoxFromBox({ x, y, w, h });
+    const hacked = (state?.hackedTime || 0) > 0;
+    const pending = (state?.hackPendingTime || 0) > 0;
+    const stateAlpha = hacked || pending ? getHackFlicker(state).alpha : 1;
 
     ctx.save();
-    ctx.globalAlpha = hacked || pending ? flicker.alpha : 1;
-    ctx.fillStyle = hacked ? "rgba(39, 255, 200, 0.10)" : "rgba(187, 92, 255, 0.24)";
-    ctx.beginPath();
-    ctx.moveTo(coneTopLeft.x, coneTopLeft.y);
-    ctx.lineTo(coneTopRight.x, coneTopRight.y);
-    ctx.lineTo(coneBottomRight.x, coneBottomRight.y);
-    ctx.lineTo(coneBottomLeft.x, coneBottomLeft.y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "rgba(233, 248, 255, 0.45)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.setLineDash([7, 7]);
-    ctx.strokeStyle = hacked ? "rgba(39, 255, 200, 0.70)" : "rgba(187, 92, 255, 0.78)";
-    ctx.beginPath();
-    ctx.moveTo(bodyX + bodyW / 2, bodyY + bodyH);
-    ctx.lineTo((coneBottomLeft.x + coneBottomRight.x) / 2, coneBottomLeft.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    if (rangeVisible) {
+      ctx.globalAlpha = stateAlpha * (0.54 + purplePulse * 0.46);
+      ctx.fillStyle = hacked ? "rgba(39, 255, 200, 0.22)" : "rgba(187, 92, 255, 0.28)";
+      ctx.beginPath();
+      ctx.moveTo(rangePolygon[0].x, rangePolygon[0].y);
+      for (const point of rangePolygon.slice(1)) ctx.lineTo(point.x, point.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = stateAlpha * (0.54 + purplePulse * 0.46);
     ctx.fillStyle = hacked ? "#27ffc8" : "#bb5cff";
     ctx.shadowColor = pending ? "#e9fff8" : hacked ? "#27ffc8" : "#bb5cff";
     ctx.shadowBlur = pending || hacked ? 18 : 10;
-    roundRect(ctx, bodyX, bodyY, bodyW, bodyH, 8);
+    roundRect(ctx, body.x, body.y, body.w, body.h, 8);
     ctx.fill();
-    if (pending || hacked) drawHackGlitchLines(ctx, x, y, w, h, flicker.jitter);
     ctx.restore();
+  }
+
+  function drawCameraRangeOverlay(ctx, polygon, x, y, w, hacked, pending, flicker, rangeVisible = false) {
+    if (!Array.isArray(polygon) || polygon.length < 3) return;
+
+    const rangeScale = Math.max(1, w / CAMERA_W);
+    const expanded = rangeScale > 1.001;
+    const baseColor = hacked ? "39, 255, 200" : "187, 92, 255";
+    const stateAlpha = hacked || pending ? flicker.alpha : 1;
+
+    ctx.save();
+    if (rangeVisible) {
+      // The polygon is generated from the actual camera hitbox, so both the
+      // fill and the border expand with cameraRangeScale.
+      ctx.globalAlpha = stateAlpha;
+      ctx.fillStyle = `rgba(${baseColor}, ${expanded ? 0.24 : 0.12})`;
+      ctx.beginPath();
+      ctx.moveTo(polygon[0].x, polygon[0].y);
+      for (const point of polygon.slice(1)) ctx.lineTo(point.x, point.y);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.globalAlpha = stateAlpha * (expanded ? 0.92 : 0.66);
+      ctx.strokeStyle = `rgba(${baseColor}, ${expanded ? 0.94 : 0.68})`;
+      ctx.lineWidth = expanded ? 2.5 : 1.5;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.stroke();
+    }
+
+    if (pending || hacked) drawHackGlitchLines(ctx, x, y, w, Math.max(1, polygon[2].y - y), flicker.jitter);
+    ctx.restore();
+  }
+
+  function getCameraPurplePulse() {
+    const t = performance.now() / 1000;
+    const wave = (Math.sin(t * CAMERA_PURPLE_PULSE_SPEED - Math.PI / 2) + 1) / 2;
+    return 0.36 + wave * 0.58;
   }
 
   function getHackFlicker(state) {
@@ -2630,7 +2821,11 @@ export function initUI(callbacks) {
     if (type === "camera") {
       const visualW = Math.max(w + 58, 176);
       const visualH = visualW / getTrapImageAspect("camera");
-      return bottomAlignedBox(x + w / 2, y + h + 19, visualW, visualH);
+      // The PNG contains a long purple range flare below the physical base.
+      // Align the base, rather than the flare's transparent image edge, to
+      // the slot floor so the camera does not appear to hover.
+      const baseOffset = visualH * CAMERA_ART_BASE_OFFSET_RATIO;
+      return bottomAlignedBox(x + w / 2, y + h + baseOffset, visualW, visualH);
     }
 
     return { x, y, w, h };
@@ -3234,6 +3429,10 @@ export function initUI(callbacks) {
       if (sideClearBlinking && Math.floor(performance.now() / 220) % 2 === 0) ctx.globalAlpha = 0.22;
       ctx.fillText(`SIDE CLEAR ${game.darkWeb?.sideClears || 0}/${getDarkWebSideClearLimitForUi(game)}`, 880, 40);
       ctx.globalAlpha = 1;
+      ctx.fillStyle = "#ffec9f";
+      const bonusLives = Math.max(0, Number(game.darkWeb?.livesRemaining) || 0);
+      const totalLives = game.darkWeb?.reviveUsed ? 3 : 2;
+      ctx.fillText(`LIVES ${bonusLives + 1}/${totalLives}`, 1040, 40);
     } else if (game.stage >= 12) {
       ctx.fillStyle = "#ffcc33";
       ctx.fillText(`INFINITE MODE · BEST ${game.infiniteBest}`, 700, 40);
@@ -3390,15 +3589,35 @@ export function initUI(callbacks) {
     window.addEventListener("keyup", (event) => keys.delete(event.code));
 
     canvas.addEventListener("pointermove", (event) => {
-      pointerTrapPreviewPos = getCanvasPos(event);
+      const position = getCanvasPos(event);
+      pointerTrapPreviewPos = position;
+      pointerHoverPos = position;
+      if (activePointerId === event.pointerId) activePointerPos = position;
     });
 
     canvas.addEventListener("pointerdown", (event) => {
-      pointerTrapPreviewPos = getCanvasPos(event);
+      const position = getCanvasPos(event);
+      pointerTrapPreviewPos = position;
+      pointerHoverPos = position;
+      activePointerId = event.pointerId;
+      activePointerPos = position;
+      canvas.setPointerCapture?.(event.pointerId);
     });
 
-    canvas.addEventListener("pointerleave", () => {
+    const releaseCanvasPointer = (event) => {
+      if (activePointerId !== event.pointerId) return;
+      activePointerId = null;
+      activePointerPos = null;
+      if (event.pointerType !== "mouse") pointerHoverPos = null;
+      canvas.releasePointerCapture?.(event.pointerId);
+    };
+
+    canvas.addEventListener("pointerup", releaseCanvasPointer);
+    canvas.addEventListener("pointercancel", releaseCanvasPointer);
+
+    canvas.addEventListener("pointerleave", (event) => {
       pointerTrapPreviewPos = null;
+      if (event.pointerType === "mouse" && activePointerId === null) pointerHoverPos = null;
     });
 
     canvas.addEventListener("click", (event) =>
@@ -3608,7 +3827,9 @@ export function initUI(callbacks) {
 
     const heading = document.createElement("div");
     heading.className = "darkweb-route-map-heading";
-    heading.textContent = `ZONE ${map.zone || 1} · SIDE MAP ${mapLabel(map.current)} · ${map.sideClears || 0}/${map.required || 3}`;
+    heading.textContent = Number(map.current) === 5
+      ? `ZONE ${map.zone || 1} · MAIN CORE ROOM · MAP C · ALL UPGRADES`
+      : `ZONE ${map.zone || 1} · SIDE MAP ${mapLabel(map.current)} · ${map.sideClears || 0}/${map.required || 3}`;
     wrapper.appendChild(heading);
 
     const details = document.createElement("div");
@@ -3666,17 +3887,55 @@ export function initUI(callbacks) {
     }
 
     function renderMapDetails(mapId) {
-      const upgrades = map.upgradesByMap?.[mapId] || {};
-      const trapList = Array.isArray(upgrades.trap) ? upgrades.trap : (upgrades.trap ? [upgrades.trap] : []);
-      const hackerList = Array.isArray(upgrades.hacker) ? upgrades.hacker : (upgrades.hacker ? [upgrades.hacker] : []);
+      const isCoreMap = Number(mapId) === 5;
+      const sourceMapIds = isCoreMap
+        ? Object.keys(map.upgradesByMap || {}).map(Number).filter((id) => id !== 5)
+        : [Number(mapId)];
+      const trapList = getMapUpgradeEntries(sourceMapIds, "trap", isCoreMap, isCoreMap);
+      const hackerList = getMapUpgradeEntries(sourceMapIds, "hacker", false, isCoreMap);
+      const formatUpgradeList = (entries) => entries.length > 0
+        ? entries.map(({ reward }) => cleanDarkWebUpgradeName(reward.name)).join(", ")
+        : "없음";
       details.innerHTML = `
-        <strong>MAP ${escapeHTML(mapLabel(mapId))} 강화 현황</strong>
-        <span>함정 강화: ${escapeHTML(trapList.map((reward) => reward.name).join(", ") || "없음")}</span>
-        <span>해커 강화: ${escapeHTML(hackerList.map((reward) => reward.name).join(", ") || "없음")}</span>
+        <strong>${isCoreMap ? "MAP C · 전체 맵 강화 현황" : `MAP ${escapeHTML(mapLabel(mapId))} 강화 현황`}</strong>
+        <span>함정 강화: ${escapeHTML(formatUpgradeList(trapList))}</span>
+        <span>해커 강화: ${escapeHTML(formatUpgradeList(hackerList))}</span>
       `;
       wrapper.querySelectorAll(".darkweb-route-node").forEach((nodeElement) => {
         nodeElement.classList.toggle("inspected", nodeElement.textContent === mapLabel(mapId));
       });
+    }
+
+    function getMapUpgradeEntries(mapIds, kind, includePermanent, dedupeAcrossMaps = false) {
+      const entries = [];
+      const firstMapByReward = new Map();
+      for (const mapId of mapIds) {
+        const upgrades = map.upgradesByMap?.[mapId] || map.upgradesByMap?.[String(mapId)] || {};
+        const rewards = Array.isArray(upgrades[kind])
+          ? upgrades[kind]
+          : (upgrades[kind] ? [upgrades[kind]] : []);
+        for (const reward of rewards) {
+          if (!reward) continue;
+          const key = reward.id || `${cleanDarkWebUpgradeName(reward.name)}|${reward.baseDesc || reward.desc || ""}`;
+          if (dedupeAcrossMaps && firstMapByReward.has(key) && firstMapByReward.get(key) !== mapId) continue;
+          if (dedupeAcrossMaps && !firstMapByReward.has(key)) firstMapByReward.set(key, mapId);
+          entries.push({ reward, mapId });
+        }
+      }
+
+      if (includePermanent && kind === "trap") {
+        for (const reward of map.permanentTrapUpgrades || []) {
+          if (!reward) continue;
+          entries.push({ reward, mapId: "PERM" });
+        }
+      }
+      return entries;
+    }
+
+    function cleanDarkWebUpgradeName(name) {
+      return String(name || "")
+        .replace(/^MAP\s+[A-Z]\s*·\s*/i, "")
+        .replace(/\s*·\s*MAP\s+[A-Z]\s*$/i, "");
     }
 
     renderMapDetails(map.selected || map.current || 1);

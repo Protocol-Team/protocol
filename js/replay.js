@@ -165,8 +165,9 @@ function checkDefenseTraps(r, game, flashLog) {
     const key = `${trap.id}-${trap.type}`;
     const overlapsTrap = rectsOverlap(r, getTrapHitbox(trap, game));
     if (trap.type === "camera") {
+      // Camera detection is range-based, so the left diagonal slice can
+      // trigger even when the hacker is outside the camera body box.
       const cameraDetectsHacker =
-        overlapsTrap &&
         isEntityInCameraView(r, trap, game) &&
         cameraCanSeeHacker(trap, r, game);
       if (!cameraDetectsHacker) {
@@ -290,7 +291,7 @@ function cameraCanSeeHacker(trap, hacker, game) {
 }
 
 function getCameraOrigin(box) {
-  return { x: box.x + box.w - 30, y: box.y + 18 };
+  return { x: box.x + box.w / 2, y: box.y + 18 };
 }
 
 function evaluateDefenseSuccess(game) {

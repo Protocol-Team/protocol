@@ -226,7 +226,9 @@ export function getCameraHazardBox(hazard, game) {
 function getCameraBoxFromAnchor(anchorX, anchorY, scale = 1) {
   const width = CAMERA_W * scale;
   return {
-    x: anchorX - 64 - (width - CAMERA_W) / 2,
+    // Camera anchors are slot centers. Keep the detection box centered on
+    // the same anchor as the camera artwork and the placement hitbox.
+    x: anchorX - width / 2,
     y: anchorY - CAMERA_H,
     w: width,
     h: CAMERA_H,
@@ -239,26 +241,40 @@ function getCameraRangeScale(game, camera) {
 
 export function getCameraDetectionPolygon(camera, game) {
   const box = getCameraHazardBox(camera, game);
-  const body = getCameraBodyBox(camera, game);
-  const bodyX = body.x;
-  const bodyY = body.y;
-  const bodyW = body.w;
-  const bodyH = body.h;
+  return getCameraDetectionPolygonFromBox(box);
+}
 
+export function getCameraDetectionPolygonFromBox(box) {
+  if (!box) return [];
+
+  const rangeHeight = box.h * 0.75;
+  const apexX = box.x + box.w / 2;
+  const apexY = box.y + box.h * 0.25;
+  const baseY = box.y + box.h;
+  const baseHalfWidth = box.w * 0.75;
+
+  // The camera body is the apex. The base is symmetric around the camera so
+  // the visual range and the actual detection area share the same silhouette.
   return [
-    { x: bodyX + 4, y: bodyY + bodyH },
-    { x: bodyX + bodyW - 10, y: bodyY + bodyH },
-    { x: bodyX + bodyW - 10, y: box.y + box.h - 1 },
-    { x: box.x + 8, y: box.y + box.h - 1 },
+    { x: apexX, y: apexY },
+    { x: apexX + baseHalfWidth, y: baseY },
+    { x: apexX - baseHalfWidth, y: baseY },
   ];
 }
 
 export function getCameraBodyBox(camera, game) {
   const box = getCameraHazardBox(camera, game);
+  return getCameraBodyBoxFromBox(box);
+}
+
+export function getCameraBodyBoxFromBox(box) {
+  if (!box) return { x: 0, y: 0, w: 0, h: 0 };
   const bodyW = Math.min(56, box.w * 0.5);
   const bodyH = Math.min(36, box.h * 0.32);
-  const bodyX = box.x + box.w - bodyW - 2;
-  const bodyY = box.y;
+  const bodyX = box.x + (box.w - bodyW) / 2;
+  // Keep the physical camera base on the slot/floor anchor instead of making
+  // the camera body appear to float at the top of its detection cell.
+  const bodyY = box.y + box.h - bodyH;
   return { x: bodyX, y: bodyY, w: bodyW, h: bodyH };
 }
 

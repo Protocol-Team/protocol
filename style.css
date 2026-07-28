@@ -3016,6 +3016,10 @@ kbd {
 
 .darkweb-route-details strong { color: #ffec9f; }
 
+.darkweb-route-details span {
+  overflow-wrap: anywhere;
+}
+
 .darkweb-route-grid {
   position: relative;
   display: grid;

@@ -17,7 +17,7 @@ import {
   pickStageOneLayoutPresetId,
 } from "./data.js?v=20260723-shield-module";
 import { createHacker, updateAttack, activateHack } from "./player.js?v=20260724-right-angle-wall-climb";
-import { initUI } from "./ui.js?v=20260724-replay-first-click";
+import { initUI } from "./ui.js?v=20260729-camera-triangle-tutorial-v2";
 import { isAttackStage, getDefenseBudget, createPlatforms, createBaseHazards, createTrapSlots } from "./stage.js?v=20260724-shared-attack-hazards";
 import {
   placeTrapAtSlot,
@@ -26,7 +26,7 @@ import {
   carryDefenseTrapsToNextStage,
   getAllowedRotation,
   getTrapCost,
-} from "./trap.js?v=20260724-camera-hack-body";
+} from "./trap.js?v=20260729-camera-triangle-tutorial-v2";
 import { startReplay as startReplayMode, updateDefenseReplay } from "./replay.js?v=20260724-stage-effect-cleanup";
 import { playBgm, playLobbyBgm, playSfx, stopAllSfx, stopBgm, stopSfx } from "./audio.js?v=20260724-stage-effect-cleanup";
 import { initLobby } from "./lobby.js?v=20260724-daily-mission-rewards-v2";
@@ -231,6 +231,8 @@ const STAGE_ONE_HACKER_DIALOGUE = [
 
 const STAGE_ONE_HACKING_TIP =
   "레이저나 카메라는 space키를 입력해 해킹할 수 있습니다. 해킹된 함정은 짧은 시간 무력화됩니다.";
+const STAGE_ONE_CAMERA_RANGE_TIP =
+  "카메라 근처에 다가가면 카메라를 클릭하거나 터치해 탐지 범위를 확인할 수 있습니다.";
 const STAGE_ONE_FLOOR_TRAP_TIP =
   "감전패널이나 EMP패널같은 바닥함정은 슬라이딩으로 회피할 수 있습니다.";
 const STAGE_ONE_WALL_TIPS = [
@@ -410,6 +412,12 @@ function createDarkWebState() {
     permanentTrapUpgrades: [],
     sideClearHintBlinkUntil: 0,
     mapReopenHintShown: false,
+    // One bonus life is granted at the start of every Dark Web run. It is
+    // consumed automatically on the first attack death; the revive item is
+    // reserved for the next death after this retry has been used.
+    livesRemaining: 1,
+    deaths: 0,
+    reviveAvailable: false,
     reviveUsed: false,
   };
 }
@@ -465,6 +473,7 @@ function createTutorialFlags() {
     stage1Reward: false,
     stage2Defense: false,
     stage1HackableTrap: false,
+    stage1CameraRange: false,
     stage1FloorTrap: false,
     stage1WallStep: 0,
     stage2ReplayTip: false,
@@ -767,10 +776,17 @@ function updateTutorialBubble(dt) {
 }
 
 function updateStageOneContextTutorial() {
-  if (game.stage !== 1 || game.turn !== TURN.ATTACK || !game.hacker || game.tutorialBubble) return;
+  if (game.mode !== "classic" || game.stage !== 1 || game.turn !== TURN.ATTACK || !game.hacker || game.tutorialBubble) return;
 
   const h = game.hacker;
-  const firstHackable = findNearbyForwardHazard(["laser", "camera"], 150);
+  const nearbyCamera = findNearbyForwardHazard(["camera"], 150);
+  if (!game.tutorialFlags.stage1CameraRange && nearbyCamera) {
+    game.tutorialFlags.stage1CameraRange = true;
+    showTutorialBubble(nearbyCamera, STAGE_ONE_CAMERA_RANGE_TIP);
+    return;
+  }
+
+  const firstHackable = findNearbyForwardHazard(["laser"], 150);
   if (!game.tutorialFlags.stage1HackableTrap && firstHackable) {
     game.tutorialFlags.stage1HackableTrap = true;
     showTutorialBubble(firstHackable, STAGE_ONE_HACKING_TIP);
@@ -937,7 +953,7 @@ function resumeAttackPause() {
   return true;
 }
 
-function endStage(success, text) {
+function endStage(success, text, options = {}) {
   if (game.turn === TURN.ENDING) return;
   clearStageAudioState();
   const completedStage = game.stage;
@@ -945,6 +961,39 @@ function endStage(success, text) {
   const resultText = completedTurn === TURN.DEFENSE_REPLAY
     ? buildDefenseResultText(game, success)
     : text;
+
+  const canUseDarkWebBonusLife = !success &&
+    game.mode === "darkweb" &&
+    completedTurn === TURN.ATTACK &&
+    options.reason === "death" &&
+    (game.darkWeb?.livesRemaining || 0) > 0;
+  if (!success && game.mode === "darkweb" && completedTurn === TURN.ATTACK && options.reason === "death") {
+    game.darkWeb.deaths = (game.darkWeb.deaths || 0) + 1;
+  }
+  if (canUseDarkWebBonusLife) {
+    game.darkWeb.livesRemaining -= 1;
+    game.failureContext = null;
+    game.showFailedDefenseLayout = false;
+    game.showSuccessDefenseLayout = false;
+    game.stage = completedStage;
+    game.turn = TURN.ENDING;
+    game.bannerTurn = completedTurn;
+    playSfx("fail");
+    uiModule.showOverlay({
+      title: "클리어 실패",
+      text: "이렇게 하면 안 될 거야.",
+      buttonText: "한번만 다시 해보자",
+      onButton: () => {
+        game.failureContext = null;
+        setupStage({ keepCurrentBgm: true });
+        playGameplayBgmForTurn(TURN.ATTACK);
+        uiModule.setLog("다크웹 추가 목숨을 사용했습니다. 같은 맵에서 공격을 다시 시작합니다.");
+      },
+    });
+    uiModule.updateUI(game);
+    return;
+  }
+
   game.turn = TURN.ENDING;
   game.bannerTurn = completedTurn;
   game.showFailedDefenseLayout = !success && completedTurn === TURN.DEFENSE_REPLAY;
@@ -964,12 +1013,18 @@ function endStage(success, text) {
 
   if (!success) {
     const darkWebFailure = game.mode === "darkweb";
+    if (darkWebFailure && completedTurn === TURN.ATTACK && options.reason === "death" && !game.darkWeb.reviveUsed) {
+      game.darkWeb.reviveAvailable = true;
+    }
     const failureHint = completedTurn === TURN.DEFENSE_REPLAY
       ? "같은 스테이지를 다시 시도합니다. 이전 배치는 유지되므로 부족한 조건에 맞춰 함정 위치나 방향을 수정하세요."
       : "공격에 실패했습니다. 이동 경로와 해킹 타이밍을 조정한 뒤 다시 시도하세요.";
+    const darkWebLifeHint = darkWebFailure && completedTurn === TURN.ATTACK && options.reason === "death"
+      ? "추가 목숨을 모두 소진했습니다. 부활 아이템은 지금부터 사용할 수 있습니다."
+      : "";
     uiModule.showOverlay({
       title: "스테이지 실패",
-      text: `${resultText}\n${failureHint}`,
+      text: [resultText, failureHint, darkWebLifeHint].filter(Boolean).join("\n"),
       buttonText: darkWebFailure ? "로비로" : "재도전",
       failureItems: true,
       onUseFailureItem: useFailureItem,
@@ -1037,11 +1092,20 @@ function useFailureItem(itemId) {
   const context = game.failureContext;
   if (!context || !game.items?.[itemId]) return;
   if (itemId === "revive" && game.mode !== "darkweb") return;
+  if (
+    itemId === "revive" &&
+    (context.turn !== TURN.ATTACK ||
+      (game.darkWeb?.livesRemaining || 0) > 0 ||
+      !game.darkWeb?.reviveAvailable ||
+      game.darkWeb?.reviveUsed)
+  ) return;
   if (itemId === "replay" && context.turn !== TURN.DEFENSE_REPLAY) return;
-  if (game.mode === "darkweb" && itemId !== "revive" && !game.darkWeb.reviveUsed) return;
 
   game.items[itemId] -= 1;
-  if (itemId === "revive" && game.mode === "darkweb") game.darkWeb.reviveUsed = true;
+  if (itemId === "revive" && game.mode === "darkweb") {
+    game.darkWeb.reviveUsed = true;
+    game.darkWeb.reviveAvailable = false;
+  }
   uiModule.hideOverlay();
 
   if (itemId === "replay") {
@@ -1070,7 +1134,7 @@ function useFailureItem(itemId) {
     uiModule.setLog("실드모듈을 사용했습니다. 해킹 중 무적 시간이 0.5초 늘어납니다.");
   } else if (itemId === "revive") {
     if (game.hacker) game.hacker.hp = Math.max(1, game.hacker.hp || 0);
-    uiModule.setLog("부활 아이템을 사용했습니다. 이번 게임에서 추가 아이템을 사용할 수 있습니다.");
+    uiModule.setLog("부활 아이템을 사용했습니다. 공격을 다시 시작합니다.");
   }
   game.failureContext = null;
   uiModule.updateUI(game);
@@ -1155,7 +1219,9 @@ function getConnectedDarkWebMapIds(mapId) {
 }
 
 function showDarkWebMapOverlay() {
-  if (game.mode !== "darkweb" || (game.turn === TURN.ENDING && game.failureContext)) return;
+  // The clear/reward overlay owns the ENDING state. Opening the map over it
+  // would replace the reward UI and make the selected reward unreachable.
+  if (game.mode !== "darkweb" || game.turn === TURN.ENDING) return;
   const currentMap = game.darkWeb.currentRoom === "core" ? 5 : game.darkWeb.currentMap;
   const coreGuide = !game.tutorialFlags.darkWebCoreIntro;
   if (coreGuide) game.tutorialFlags.darkWebCoreIntro = true;
@@ -1172,6 +1238,7 @@ function showDarkWebMapOverlay() {
       selected: currentMap,
       coreGuide,
       upgradesByMap: game.darkWeb.mapUpgrades,
+      permanentTrapUpgrades: game.darkWeb.permanentTrapUpgrades,
       onNodeSelected: (destination) => showDarkWebMoveConfirmOverlay(destination, game.darkWeb.sideClears >= getDarkWebSideClearLimit()),
       nodes: DARK_WEB_SIDE_MAP_IDS.map((id) => ({ id, label: `SIDE MAP ${DARK_WEB_MAP_LABELS[id]}` })).concat([
         { id: 5, label: "MAIN CORE ROOM · C", locked: game.darkWeb.currentRoom !== "core" && game.darkWeb.sideClears < getDarkWebSideClearLimit() },
@@ -1214,6 +1281,7 @@ function showDarkWebRouteOverlay() {
       selected: game.darkWeb.currentMap,
       coreGuide,
       upgradesByMap: game.darkWeb.mapUpgrades,
+      permanentTrapUpgrades: game.darkWeb.permanentTrapUpgrades,
       onNodeSelected: (destination) => showDarkWebMoveConfirmOverlay(destination, coreAvailable),
       nodes: DARK_WEB_SIDE_MAP_IDS.map((id) => ({ id, label: `SIDE MAP ${DARK_WEB_MAP_LABELS[id]}` })).concat([
         { id: 5, label: "MAIN CORE ROOM · C", locked: !coreAvailable },
@@ -1289,11 +1357,17 @@ function showDarkWebZoneClearOverlay(resultText) {
 function advanceDarkWebZone(permanentTrapUpgrade) {
   const nextZone = game.darkWeb.zone + 1;
   const permanentTrapUpgrades = [...(game.darkWeb.permanentTrapUpgrades || [])];
+  const livesRemaining = Math.max(0, Number(game.darkWeb.livesRemaining) || 0);
+  const reviveAvailable = Boolean(game.darkWeb.reviveAvailable);
+  const reviveUsed = Boolean(game.darkWeb.reviveUsed);
   if (permanentTrapUpgrade) permanentTrapUpgrades.push(permanentTrapUpgrade);
   game.darkWeb = createDarkWebState();
   game.darkWeb.active = true;
   game.darkWeb.zone = nextZone;
   game.darkWeb.permanentTrapUpgrades = permanentTrapUpgrades;
+  game.darkWeb.livesRemaining = livesRemaining;
+  game.darkWeb.reviveAvailable = reviveAvailable;
+  game.darkWeb.reviveUsed = reviveUsed;
   game.stage = getDarkWebStage();
   game.darkWebBestZone = Math.max(game.darkWebBestZone, nextZone - 1);
   try {
