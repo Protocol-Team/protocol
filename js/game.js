@@ -232,7 +232,7 @@ const STAGE_ONE_HACKER_DIALOGUE = [
 const STAGE_ONE_HACKING_TIP =
   "레이저나 카메라는 space키를 입력해 해킹할 수 있습니다. 해킹된 함정은 짧은 시간 무력화됩니다.";
 const STAGE_ONE_CAMERA_RANGE_TIP =
-  "카메라 근처에 다가가면 카메라를 클릭하거나 터치해 탐지 범위를 확인할 수 있습니다.";
+  "카메라를 클릭하거나 터치해 탐지 범위를 확인할 수 있습니다.";
 const STAGE_ONE_FLOOR_TRAP_TIP =
   "감전패널이나 EMP패널같은 바닥함정은 슬라이딩으로 회피할 수 있습니다.";
 const STAGE_ONE_WALL_TIPS = [
