@@ -919,6 +919,12 @@ function handleTutorialBubbleInput() {
 }
 
 function getObjectAnchor(object) {
+  // Stage cameras are normalized with x/y already representing the physical
+  // anchor, while regular rect-based objects store their top-left corner.
+  if (object?.type === "camera" && !Number.isFinite(object.w)) {
+    return { x: object.x, y: object.y };
+  }
+
   return {
     x: object.x + object.w / 2,
     y: object.y,
