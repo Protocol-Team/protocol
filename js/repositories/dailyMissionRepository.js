@@ -1,12 +1,15 @@
 const STORAGE_KEY = "traceProtocolDailyMissions";
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 9;
+const ALL_DAILY_REWARD = 5;
 const MISSIONS = [
   { id: "attendance", reward: 2, target: 1 },
-  { id: "classicPlay", reward: 2, target: 1 },
-  { id: "hackerAiClear", reward: 3, target: 6 },
-  { id: "sequentialClear", reward: 4, target: 11 },
-  { id: "darkWebCore", reward: 4, target: 1 },
+  { id: "shopVisit", reward: 2, target: 1 },
+  { id: "classicPlay", reward: 3, target: 1 },
+  { id: "hackerAiClear", reward: 4, target: 6 },
+  { id: "dailyFourClear", reward: 4, target: 4 },
+  { id: "darkWebCore", reward: 5, target: 1 },
 ];
+const DAILY_FOUR_CLEAR_IDS = ["attendance", "shopVisit", "classicPlay", "hackerAiClear", "darkWebCore"];
 
 function dateKey(date = new Date()) {
   return [
@@ -48,7 +51,7 @@ function calculateClaimedReward(claimed = {}) {
     (total, mission) => total + (claimed[mission.id] ? mission.reward : 0),
     0
   );
-  return missionReward + (claimed.allDaily ? 5 : 0);
+  return missionReward + (claimed.allDaily ? ALL_DAILY_REWARD : 0);
 }
 
 export function getDailyMissionState(now = new Date()) {
@@ -56,29 +59,25 @@ export function getDailyMissionState(now = new Date()) {
   const today = dateKey(now);
   if (stored?.dateKey === today && stored.schemaVersion !== SCHEMA_VERSION) {
     const previousTodayUsb = Math.max(0, Number(stored.todayUsb) || 0);
-    const claimed = { ...stored.claimed };
-    const progress = { ...stored.progress };
-    delete claimed.infiniteClear;
-    delete progress.infiniteClear;
-    delete progress.infiniteHackerClears;
-    delete progress.infiniteAiClears;
-    claimed.sequentialClear = false;
-    claimed.allDaily = false;
-    progress.sequentialClear = 0;
-    progress.sequentialNextStage = 1;
-    const correctedTodayUsb = calculateClaimedReward(claimed);
-    stored = {
-      ...stored,
-      schemaVersion: SCHEMA_VERSION,
-      claimed,
-      progress,
-      todayUsb: correctedTodayUsb,
-      totalUsb: Math.max(0, (Number(stored.totalUsb) || 0) + correctedTodayUsb - previousTodayUsb),
-      history: {
-        ...stored.history,
-        [today]: correctedTodayUsb,
-      },
-    };
+    const migrated = emptyState(today, stored.totalUsb, stored.history);
+    for (const { id } of MISSIONS) {
+      if ((Number(stored.schemaVersion) || 0) < 8 && (id === "shopVisit" || id === "dailyFourClear")) continue;
+      migrated.progress[id] = Math.max(0, Number(stored.progress?.[id]) || 0);
+      if (stored.claimed?.[id]) migrated.claimed[id] = true;
+    }
+    migrated.progress.dailyHackerClears = Math.max(0, Number(stored.progress?.dailyHackerClears) || 0);
+    migrated.progress.dailyAiClears = Math.max(0, Number(stored.progress?.dailyAiClears) || 0);
+    const completedCount = DAILY_FOUR_CLEAR_IDS.filter((id) => migrated.claimed[id]).length;
+    migrated.progress.dailyFourClear = Math.min(4, completedCount);
+    if (completedCount >= 4) migrated.claimed.dailyFourClear = true;
+    if (MISSIONS.every(({ id }) => migrated.claimed[id])) migrated.claimed.allDaily = true;
+    migrated.todayUsb = calculateClaimedReward(migrated.claimed);
+    migrated.totalUsb = Math.max(
+      0,
+      (Number(stored.totalUsb) || 0) + migrated.todayUsb - previousTodayUsb
+    );
+    migrated.history = { ...stored.history, [today]: migrated.todayUsb };
+    stored = migrated;
     writeState(stored);
   }
   if (!stored || stored.dateKey !== today) {
@@ -108,10 +107,18 @@ export function recordDailyMissionEvent(type, amount = 1, now = new Date()) {
     state.todayUsb += mission.reward;
     state.totalUsb += mission.reward;
   }
+  const completedCount = DAILY_FOUR_CLEAR_IDS.filter((id) => state.claimed[id]).length;
+  state.progress.dailyFourClear = Math.min(4, completedCount);
+  if (completedCount >= 4 && !state.claimed.dailyFourClear) {
+    const dailyFourMission = MISSIONS.find(({ id }) => id === "dailyFourClear");
+    state.claimed.dailyFourClear = true;
+    state.todayUsb += dailyFourMission.reward;
+    state.totalUsb += dailyFourMission.reward;
+  }
   if (MISSIONS.every(({ id }) => state.claimed[id]) && !state.claimed.allDaily) {
     state.claimed.allDaily = true;
-    state.todayUsb += 5;
-    state.totalUsb += 5;
+    state.todayUsb += ALL_DAILY_REWARD;
+    state.totalUsb += ALL_DAILY_REWARD;
   }
   state.history = { ...state.history, [state.dateKey]: state.todayUsb };
   writeState(state);
@@ -146,18 +153,10 @@ export function recordStageClearForDailyMissions({ mode, stage }) {
   const role = stageNumber % 2 === 1 ? "Hacker" : "Ai";
   const clearKey = `daily${role}Clears`;
   state.progress[clearKey] = (Number(state.progress[clearKey]) || 0) + 1;
-  const expectedStage = Math.max(1, Number(state.progress.sequentialNextStage) || 1);
-  if (stageNumber === expectedStage && stageNumber <= 11) {
-    state.progress.sequentialClear = stageNumber;
-    state.progress.sequentialNextStage = stageNumber + 1;
-  }
   writeState(state);
 
   if ((state.progress.dailyHackerClears || 0) >= 3 && (state.progress.dailyAiClears || 0) >= 3) {
-    recordDailyMissionEvent("hackerAiClear", 6);
-  }
-  if ((state.progress.sequentialClear || 0) >= 11) {
-    return recordDailyMissionEvent("sequentialClear", 11);
+    return recordDailyMissionEvent("hackerAiClear", 6);
   }
   window.dispatchEvent(new CustomEvent("protocol:daily-mission-update", { detail: state }));
   return state;

@@ -13,7 +13,7 @@ import {
   getDailyUsbHistory,
   getMillisecondsUntilMidnight,
   recordDailyMissionEvent,
-} from "./repositories/dailyMissionRepository.js?v=20260724-daily-mission-rewards-v2";
+} from "./repositories/dailyMissionRepository.js?v=20260730-daily-mission-all-clear-v3";
 
 const CLASSIC_CLEAR_STORAGE_KEY = "traceProtocolClassicStage11Returned";
 const SELECTABLE_AI_SKINS = [
@@ -53,6 +53,7 @@ export function initLobby({
   const modePanel = createModePanel();
   const stageSelectPanel = createStageSelectPanel();
   const dailyMissionCountdown = document.getElementById("dailyMissionCountdown");
+  const dailyMissionAllClear = document.getElementById("dailyMissionAllClear");
   const dailyUsbCount = document.getElementById("dailyUsbCount");
   const totalUsbCount = document.getElementById("totalUsbCount");
   const dailyUsbHistoryList = document.getElementById("dailyUsbHistoryList");
@@ -69,6 +70,8 @@ export function initLobby({
   let skinPanelOpen = false;
   let modePanelOpen = false;
   let stageSelectOpen = false;
+  let returnToDailyMissionFromStageSelect = false;
+  let returnToDailyMissionFromShop = false;
   let pendingPurchaseSkinId = "";
   let enteringLobby = false;
   let lastMissionDateKey = "";
@@ -88,6 +91,17 @@ export function initLobby({
   const refreshDailyMission = (state = getDailyMissionState()) => {
     if (dailyUsbCount) dailyUsbCount.textContent = String(state.todayUsb || 0);
     if (totalUsbCount) totalUsbCount.textContent = String(state.totalUsb || 0);
+    const hackerAiProgress = dailyMissionScreen?.querySelector(
+      '[data-mission-id="hackerAiClear"] .daily-mission-progress'
+    );
+    if (hackerAiProgress) {
+      const hackerRemaining = Math.max(0, 3 - (Number(state.progress?.dailyHackerClears) || 0));
+      const aiRemaining = Math.max(0, 3 - (Number(state.progress?.dailyAiClears) || 0));
+      const hackerRemainingText = hackerAiProgress.querySelector('[data-role="hacker-remaining"]');
+      const aiRemainingText = hackerAiProgress.querySelector('[data-role="ai-remaining"]');
+      if (hackerRemainingText) hackerRemainingText.textContent = `${hackerRemaining}판`;
+      if (aiRemainingText) aiRemainingText.textContent = `${aiRemaining}판`;
+    }
     if (dailyUsbHistoryList) {
       const history = getDailyUsbHistory();
       dailyUsbHistoryList.innerHTML = history.length
@@ -100,8 +114,12 @@ export function initLobby({
       const complete = Boolean(state.claimed?.[card.dataset.missionId]);
       card.classList.toggle("is-complete", complete);
       card.setAttribute("aria-disabled", complete ? "true" : "false");
+      if (card.matches(".daily-mission-stage-link, .daily-mission-shop-link")) {
+        card.tabIndex = complete ? -1 : 0;
+      }
       card.querySelector(".daily-mission-claim")?.toggleAttribute("disabled", complete);
     });
+    dailyMissionAllClear?.classList.toggle("hidden", !state.claimed?.allDaily);
     lastMissionDateKey = state.dateKey;
   };
 
@@ -274,7 +292,8 @@ export function initLobby({
     lobbyScreen?.classList.toggle("hidden", Boolean(screen));
   };
 
-  const showStageSelect = () => {
+  const showStageSelect = ({ returnToDailyMission = false } = {}) => {
+    returnToDailyMissionFromStageSelect = Boolean(returnToDailyMission);
     active = true;
     root?.classList.remove("hidden");
     document.body.classList.add("lobby-active", "lobby-ready");
@@ -481,6 +500,7 @@ export function initLobby({
       event.preventDefault();
       event.stopPropagation();
       const stage = Number(stageButton.dataset.stage) || 1;
+      returnToDailyMissionFromStageSelect = false;
       setStageSelectOpen(false);
       hideLobby();
       onStart?.("classic", stage);
@@ -489,7 +509,13 @@ export function initLobby({
     if (event.target?.closest?.("[data-action='back-to-lobby']")) {
       event.preventDefault();
       event.stopPropagation();
+      const shouldReturnToDailyMission = returnToDailyMissionFromStageSelect;
+      returnToDailyMissionFromStageSelect = false;
       setStageSelectOpen(false);
+      if (shouldReturnToDailyMission) {
+        refreshDailyMission();
+        showFeatureScreen(dailyMissionScreen);
+      }
     }
   });
 
@@ -582,11 +608,50 @@ export function initLobby({
     refreshDailyMission(recordDailyMissionEvent("attendance"));
   });
 
+  const openStageSelectFromMission = (event) => {
+    const card = event.target?.closest?.(".daily-mission-stage-link");
+    if (!card) return;
+    const state = getDailyMissionState();
+    if (state.claimed?.[card.dataset.missionId]) {
+      refreshDailyMission(state);
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    playSfx("click");
+    showStageSelect({ returnToDailyMission: true });
+  };
+
+  dailyMissionScreen?.addEventListener("click", openStageSelectFromMission);
+  dailyMissionScreen?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    openStageSelectFromMission(event);
+  });
+
+  const openShopFromMission = (event) => {
+    const card = event.target?.closest?.(".daily-mission-shop-link");
+    if (!card) return;
+    event.preventDefault();
+    event.stopPropagation();
+    playSfx("click");
+    refreshDailyMission(recordDailyMissionEvent("shopVisit"));
+    returnToDailyMissionFromShop = true;
+    showFeatureScreen(shopScreen);
+  };
+
+  dailyMissionScreen?.addEventListener("click", openShopFromMission);
+  dailyMissionScreen?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    openShopFromMission(event);
+  });
+
   shopBtn?.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
     startLobbyBgm();
     closeLobbyPopups();
+    recordDailyMissionEvent("shopVisit");
+    returnToDailyMissionFromShop = false;
     showFeatureScreen(shopScreen);
   });
 
@@ -595,6 +660,13 @@ export function initLobby({
       if (!event.target?.closest?.("[data-action='back-to-lobby']")) return;
       event.preventDefault();
       event.stopPropagation();
+      if (screen === shopScreen && returnToDailyMissionFromShop) {
+        returnToDailyMissionFromShop = false;
+        refreshDailyMission();
+        showFeatureScreen(dailyMissionScreen);
+        return;
+      }
+      returnToDailyMissionFromShop = false;
       showFeatureScreen(null);
     });
   }
@@ -653,7 +725,7 @@ function createStageSelectPanel() {
   panel.innerHTML = `
     <div class="lobby-stage-select-header">
       <div><p class="lobby-kicker">CLASSIC MODE</p><h2>SELECT STAGE</h2><p>플레이할 스테이지를 선택하세요.</p></div>
-      <button class="lobby-button" type="button" data-action="back-to-lobby">BACK TO LOBBY</button>
+      <button class="lobby-button" type="button" data-action="back-to-lobby">BACK</button>
     </div>
     <div class="lobby-stage-scroller" tabindex="0" aria-label="스테이지 목록">
       <div class="lobby-stage-track">
