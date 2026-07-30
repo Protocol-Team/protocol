@@ -29,12 +29,13 @@ import {
 } from "./trap.js?v=20260729-camera-triangle-tutorial-v2";
 import { startReplay as startReplayMode, updateDefenseReplay } from "./replay.js?v=20260724-stage-effect-cleanup";
 import { playBgm, playLobbyBgm, playSfx, stopAllSfx, stopBgm, stopSfx } from "./audio.js?v=20260724-stage-effect-cleanup";
-import { initLobby } from "./lobby.js?v=20260730-daily-mission-all-clear-v6";
+import { initLobby } from "./lobby.js?v=20260730-shop-v2";
 import {
   recordDailyMissionEvent,
   recordStageClearForDailyMissions,
-} from "./repositories/dailyMissionRepository.js?v=20260730-daily-mission-all-clear-v3";
+} from "./repositories/dailyMissionRepository.js?v=20260730-shop-v1";
 import { getBestStage, resetBestStage, saveBestStage } from "./repositories/localGameRepository.js";
+import { consumeShopItem, getShopInventory } from "./repositories/shopRepository.js";
 
 const BGM_TRACKS = {
   play: "neon-circuit-drift.mp3",
@@ -321,13 +322,7 @@ function createStageState(mods = createDefaultMods()) {
 }
 
 function createItemState() {
-  return {
-    attackTime: 1,
-    energyMax: 1,
-    shieldModule: 1,
-    revive: 1,
-    replay: 1,
-  };
+  return getShopInventory();
 }
 
 function createStageSelectionRecording() {
@@ -1110,6 +1105,7 @@ function useFailureItem(itemId) {
   ) return;
   if (itemId === "replay" && context.turn !== TURN.DEFENSE_REPLAY) return;
 
+  if (!consumeShopItem(itemId)) return;
   game.items[itemId] -= 1;
   if (itemId === "revive" && game.mode === "darkweb") {
     game.darkWeb.reviveUsed = true;

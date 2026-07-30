@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="screen-orientation" content="landscape" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260708-icons" />
-  <link rel="stylesheet" href="./style.css?v=20260730-daily-mission-all-clear-v15" />
+  <link rel="stylesheet" href="./style.css?v=20260730-shop-v20" />
 </head>
 <body>
   <div id="lobbyRoot" class="lobby-root" aria-live="polite">
@@ -115,11 +115,45 @@
       </div>
     </section>
 
-    <section id="shopScreen" class="lobby-feature-screen hidden" aria-label="상점">
-      <div class="lobby-feature-card">
-        <p class="lobby-kicker">MARKET NODE</p>
-        <h2>상점</h2>
-        <button class="lobby-button" type="button" data-action="back-to-lobby">BACK</button>
+    <section id="shopScreen" class="lobby-feature-screen shop-screen hidden" aria-label="상점">
+      <div class="shop-shell">
+        <header class="shop-topbar">
+          <div><h2>SHOP</h2></div>
+          <button class="lobby-button shop-back" type="button" data-action="back-to-lobby">BACK</button>
+        </header>
+        <div class="shop-body">
+          <nav class="shop-tabs" aria-label="상점 카테고리">
+            <button class="shop-tab is-active" type="button" data-shop-tab="item" aria-selected="true"><span>ITEM</span><small>소모품</small></button>
+            <button class="shop-tab" type="button" data-shop-tab="usb" aria-selected="false"><span>USB</span><small>데이터 저장소</small></button>
+            <div class="shop-tab-space" aria-hidden="true"><span>NEW CATEGORY</span><span>EXPANSION SLOT</span></div>
+          </nav>
+          <div class="shop-content">
+            <div class="shop-wallet" aria-label="보유 USB">
+              <span class="usb-token" aria-hidden="true"><i></i><b>USB</b></span>
+              <strong id="shopUsbCount">0</strong>
+            </div>
+            <section class="shop-panel" data-shop-panel="item">
+              <div class="shop-panel-heading">
+                <div><h3>일반 상점</h3><span class="shop-eyebrow">GENERAL STORE</span></div>
+                <p>게임 플레이에 필요한 아이템을 USB로 구매할 수 있습니다.</p>
+              </div>
+              <div id="shopItemGrid" class="shop-product-grid"></div>
+            </section>
+            <section class="shop-panel hidden" data-shop-panel="usb">
+              <div class="shop-panel-heading">
+                <div><h3>USB 상점</h3><span class="shop-eyebrow">STORAGE UPGRADE</span></div>
+                <p>더 큰 저장소를 확보해 USB를 충전합니다.</p>
+              </div>
+              <div class="shop-product-grid shop-usb-grid">
+                <article class="shop-product usb-pack"><span class="shop-product-tag">DAILY</span><h4>무료 USB</h4><div class="storage-art storage-usb"><span></span></div><p class="shop-item-desc">매일 한 번 무료 USB를 획득합니다.</p><strong class="pack-amount">USB ×1</strong><button type="button" data-usb-pack="1">무료 획득</button></article>
+                <article class="shop-product usb-pack"><span class="shop-product-tag">PORTABLE</span><h4>USB 드라이브</h4><div class="storage-art storage-stick"><span></span></div><p class="shop-item-desc">휴대용 저장 장치에 USB를 충전합니다.</p><strong class="pack-amount">USB ×25</strong><button type="button" data-usb-pack="25">KRW 2,500</button></article>
+                <article class="shop-product usb-pack"><span class="shop-product-tag">EXTERNAL</span><h4>외장 하드</h4><div class="storage-art storage-drive"><span></span></div><p class="shop-item-desc">확장된 외장 저장소에 USB를 보관합니다.</p><strong class="pack-amount">USB ×50</strong><button type="button" data-usb-pack="50">KRW 4,950</button></article>
+                <article class="shop-product usb-pack"><span class="shop-product-tag">CLOUD</span><h4>클라우드 시스템</h4><div class="storage-art storage-cloud"><span></span></div><p class="shop-item-desc">클라우드 저장소에 대용량 USB를 충전합니다.</p><strong class="pack-amount">USB ×100</strong><button type="button" data-usb-pack="100">KRW 9,900</button></article>
+              </div>
+            </section>
+            <p id="shopStatus" class="shop-status" aria-live="polite"></p>
+          </div>
+        </div>
       </div>
     </section>
   </div>
@@ -241,7 +275,7 @@
       }
     }
 
-    await import("./js/game.js?v=20260730-daily-mission-all-clear-v6");
+    await import("./js/game.js?v=20260730-shop-v2");
   </script>
 </body>
 </html>
