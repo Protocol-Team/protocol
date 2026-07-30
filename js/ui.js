@@ -3408,6 +3408,9 @@ export function initUI(callbacks) {
 
   function drawStageBanner(ctx, game) {
     const bannerTurn = getStageBannerTurn(game);
+    const compactHud = game.mode === "darkweb" && isCompactGuideLayout();
+    const bannerY = compactHud ? 132 : 40;
+    const objectiveY = compactHud ? 152 : 60;
     ctx.save();
     ctx.fillStyle = bannerTurn === TURN.ATTACK ? "#ff446a" : "#18e0ff";
     ctx.font = "bold 16px PfStardust30, system-ui";
@@ -3417,22 +3420,22 @@ export function initUI(callbacks) {
     ctx.fillText(
       `${bannerTitle} / ${bannerTurn === TURN.ATTACK ? "HACKER ATTACK" : "AI DEFENSE"}`,
       30,
-      40
+      bannerY
     );
     ctx.fillStyle = "#c4e9f4";
     ctx.font = "13px PfStardust30, system-ui";
-    ctx.fillText(getObjectiveDisplayText(game), 30, 60);
+    ctx.fillText(getObjectiveDisplayText(game), 30, objectiveY);
 
     if (game.mode === "darkweb") {
       ctx.fillStyle = "#ffcc33";
       const sideClearBlinking = performance.now() < (game.darkWeb?.sideClearHintBlinkUntil || 0);
       if (sideClearBlinking && Math.floor(performance.now() / 220) % 2 === 0) ctx.globalAlpha = 0.22;
-      ctx.fillText(`SIDE CLEAR ${game.darkWeb?.sideClears || 0}/${getDarkWebSideClearLimitForUi(game)}`, 880, 40);
+      ctx.fillText(`SIDE CLEAR ${game.darkWeb?.sideClears || 0}/${getDarkWebSideClearLimitForUi(game)}`, 880, bannerY);
       ctx.globalAlpha = 1;
       ctx.fillStyle = "#ffec9f";
       const bonusLives = Math.max(0, Number(game.darkWeb?.livesRemaining) || 0);
       const totalLives = game.darkWeb?.reviveUsed ? 3 : 2;
-      ctx.fillText(`LIVES ${bonusLives + 1}/${totalLives}`, 1040, 40);
+      ctx.fillText(`LIVES ${bonusLives + 1}/${totalLives}`, 1040, bannerY);
     } else if (game.stage >= 12) {
       ctx.fillStyle = "#ffcc33";
       ctx.fillText(`INFINITE MODE · BEST ${game.infiniteBest}`, 700, 40);
@@ -3891,8 +3894,9 @@ export function initUI(callbacks) {
       const sourceMapIds = isCoreMap
         ? Object.keys(map.upgradesByMap || {}).map(Number).filter((id) => id !== 5)
         : [Number(mapId)];
-      const trapList = getMapUpgradeEntries(sourceMapIds, "trap", isCoreMap, isCoreMap);
+      const trapList = getMapUpgradeEntries(sourceMapIds, "trap", false, isCoreMap);
       const hackerList = getMapUpgradeEntries(sourceMapIds, "hacker", false, isCoreMap);
+      const permanentUpgrades = isCoreMap ? (map.permanentTrapUpgrades || []).filter(Boolean) : [];
       const formatUpgradeList = (entries) => entries.length > 0
         ? entries.map(({ reward }) => cleanDarkWebUpgradeName(reward.name)).join(", ")
         : "없음";
@@ -3900,7 +3904,40 @@ export function initUI(callbacks) {
         <strong>${isCoreMap ? "MAP C · 전체 맵 강화 현황" : `MAP ${escapeHTML(mapLabel(mapId))} 강화 현황`}</strong>
         <span>함정 강화: ${escapeHTML(formatUpgradeList(trapList))}</span>
         <span>해커 강화: ${escapeHTML(formatUpgradeList(hackerList))}</span>
+        ${isCoreMap ? `
+          <div class="darkweb-permanent-cache">
+            <button class="darkweb-permanent-toggle" type="button" aria-expanded="false" aria-label="영구 강화 상세 보기">
+              <span>PERMANENT CACHE</span><strong>${permanentUpgrades.length}개</strong><em>＋</em>
+            </button>
+            <div class="darkweb-permanent-panel hidden">
+              <div class="darkweb-permanent-scope">적용 맵: MAP A · B · C · D · E (전체 수비 턴)</div>
+              ${permanentUpgrades.length > 0
+                ? permanentUpgrades.map((reward) => `
+                  <article>
+                    <strong>${escapeHTML(cleanDarkWebUpgradeName(reward.name))}</strong>
+                    <span>${escapeHTML(reward.baseDesc || reward.desc || "영구 강화 효과")}</span>
+                  </article>
+                `).join("")
+                : "<p>아직 영구 강화가 없습니다.</p>"}
+            </div>
+          </div>
+        ` : ""}
       `;
+      const permanentToggle = details.querySelector(".darkweb-permanent-toggle");
+      const permanentPanel = details.querySelector(".darkweb-permanent-panel");
+      let permanentToggleHandledAt = 0;
+      const togglePermanentPanel = (event) => {
+        if (event.type === "click" && performance.now() - permanentToggleHandledAt < 500) return;
+        if (event.type === "pointerdown") permanentToggleHandledAt = performance.now();
+        event.preventDefault();
+        event.stopPropagation();
+        const expanded = permanentToggle.getAttribute("aria-expanded") === "true";
+        permanentToggle.setAttribute("aria-expanded", expanded ? "false" : "true");
+        permanentToggle.querySelector("em").textContent = expanded ? "＋" : "－";
+        permanentPanel?.classList.toggle("hidden", expanded);
+      };
+      permanentToggle?.addEventListener("pointerdown", togglePermanentPanel);
+      permanentToggle?.addEventListener("click", togglePermanentPanel);
       wrapper.querySelectorAll(".darkweb-route-node").forEach((nodeElement) => {
         nodeElement.classList.toggle("inspected", nodeElement.textContent === mapLabel(mapId));
       });

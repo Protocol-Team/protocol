@@ -166,6 +166,15 @@
             <button id="darkWebMapBtn" class="secondary hidden" type="button">지도</button>
             <button id="restartBtn" class="secondary" type="button">스테이지 선택</button>
             <button id="pauseAttackBtn" class="secondary timer-pause-btn" type="button" aria-pressed="false">일시정지</button>
+            <div class="profile-menu">
+              <button id="profileBtn" class="profile-trigger" type="button" aria-label="프로필 메뉴" aria-expanded="false">
+                <span class="profile-avatar-fallback" aria-hidden="true">?</span>
+                <img id="profileAvatar" class="profile-avatar hidden" alt="" referrerpolicy="no-referrer" />
+                <span id="profileName" class="profile-name">GUEST USER</span>
+                <span class="profile-chevron" aria-hidden="true">⌄</span>
+              </button>
+              <div id="profilePanel" class="profile-panel hidden" aria-label="프로필 및 연동 현황"></div>
+            </div>
             <div class="settings-menu">
               <button id="settingsBtn" class="secondary icon-btn settings-toggle" type="button" aria-label="설정" aria-expanded="false">⚙</button>
               <div id="settingsPanel" class="settings-panel hidden" aria-label="설정 패널">

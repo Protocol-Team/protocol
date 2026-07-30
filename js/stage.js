@@ -1,7 +1,7 @@
 ﻿// stage.js
 // 책임: 스테이지 로딩과 맵 생성만 담당합니다.
 
-import { GROUND_Y, INFINITE_STAGE_START, LASER_BASE_LENGTH, WIDTH, getFirewallBlockTime, getStageById } from "./data.js?v=20260720-defense-ux";
+import { GROUND_Y, INFINITE_STAGE_START, LASER_BASE_LENGTH, WIDTH, getDarkWebStageByMapId, getFirewallBlockTime, getStageById } from "./data.js?v=20260720-defense-ux";
 import {
   FLOOR_TRAP_HEIGHT,
   FLOOR_TRAP_SURFACE_LIFT,
@@ -68,8 +68,20 @@ export function getDefenseBudget(stage, game) {
   return base;
 }
 
-export function createPlatforms(stage, game) {
+export function getStageDefinition(stage, game) {
   const stageData = getStageById(stage, getLayoutOptions(stage, game));
+  if (stageData) return stageData;
+
+  if (game?.mode === "darkweb") {
+    const mapId = game.darkWeb?.currentRoom === "core" ? 5 : Number(game.darkWeb?.currentMap) || 1;
+    return getDarkWebStageByMapId(mapId, stage);
+  }
+
+  return null;
+}
+
+export function createPlatforms(stage, game) {
+  const stageData = getStageDefinition(stage, game);
   if (stageData) return cloneRects(stageData.platforms);
 
   const platforms = createFallbackPlatforms();
@@ -170,7 +182,7 @@ function createFallbackPlatforms() {
 export function createBaseHazards(stage, game) {
   if (!isAttackStage(stage)) return [];
 
-  const stageData = getStageById(stage, getLayoutOptions(stage, game));
+  const stageData = getStageDefinition(stage, game);
   const hazards = stageData
     ? cloneTrapNodes(stageData.trapNodes)
     : createFallbackStageHazards(stage);
@@ -207,7 +219,7 @@ export function trapToAttackHazard(trap, game) {
 export function createTrapSlots(stage, game) {
   if (!Array.isArray(game?.platforms)) return [];
 
-  const stageData = getStageById(stage, getLayoutOptions(stage, game));
+  const stageData = getStageDefinition(stage, game);
   if (isDefenseStage(stageData, stage)) return createDefenseTrapSlots(stage, game);
   return createAttackTrapSlots(stage, game, stageData);
 }
@@ -249,7 +261,7 @@ function createAttackTrapSlots(stage, game, stageData) {
 function createDefenseTrapSlots(stage, game) {
   const slots = [];
   let id = 0;
-  const stageData = getStageById(stage, getLayoutOptions(stage, game));
+  const stageData = getStageDefinition(stage, game);
   const debug = createDefenseTrapSlotDebug(stageData);
 
   for (const platform of game.platforms) {
@@ -331,10 +343,7 @@ function getStageHazardsForDefenseSlots(stage, game) {
   // Direct defense-stage selection has no live attack snapshot. In that one
   // case, reconstruct only the immediately preceding attack-stage hazards.
   const previousAttackStage = Math.max(1, Number(stage) - 1);
-  const previousAttackData = getStageById(
-    previousAttackStage,
-    getLayoutOptions(previousAttackStage, game)
-  );
+  const previousAttackData = getStageDefinition(previousAttackStage, game);
   return createStageHazardsForSlotBlocking(previousAttackStage, game, previousAttackData);
 }
 
@@ -739,7 +748,7 @@ function isValidPlatformRect(platform) {
 }
 
 export function getWallTrapSlots(stageId, game) {
-  const stageData = getStageById(stageId, getLayoutOptions(stageId, game));
+  const stageData = getStageDefinition(stageId, game);
   if (!stageData || !stageData.wallTrapSlots) return [];
   return stageData.wallTrapSlots.map((slot) => ({
     ...slot,
@@ -977,7 +986,7 @@ function wouldHazardOverlapProtectedArea(hazard, y, width, height, stage, game) 
 }
 
 function getStagePlayerStartRect(stage, game) {
-  const stageData = getStageById(stage, getLayoutOptions(stage, game));
+  const stageData = getStageDefinition(stage, game);
   const playerStart = stageData?.playerStart || { x: 64, y: 388 };
   return {
     x: playerStart.x,
@@ -1052,7 +1061,7 @@ function getLayoutOptions(stage, game) {
 }
 
 function isNearPlayerStartSlot(stage, x, y, game) {
-  const stageData = getStageById(stage, getLayoutOptions(stage, game));
+  const stageData = getStageDefinition(stage, game);
   const playerStart = stageData?.playerStart || { x: 64, y: 388 };
   const startFeetY = playerStart.y + HACKER_START_HEIGHT;
   return Math.abs(x - playerStart.x) <= START_SLOT_BLOCK_X &&
@@ -1060,7 +1069,7 @@ function isNearPlayerStartSlot(stage, x, y, game) {
 }
 
 function isOverlappingDefensePlayerStartSlot(stage, x, y, game) {
-  const stageData = getStageById(stage, getLayoutOptions(stage, game));
+  const stageData = getStageDefinition(stage, game);
   const playerStart = stageData?.playerStart || { x: 64, y: 388 };
   const startLeft = playerStart.x;
   const startRight = playerStart.x + HACKER_START_WIDTH;

@@ -24,6 +24,14 @@ import {
 } from "./repositories/shopRepository.js";
 
 const CLASSIC_CLEAR_STORAGE_KEY = "traceProtocolClassicStage11Returned";
+const PROFILE_STORAGE_KEY = "traceProtocolProfileSettings";
+const DEFAULT_PROFILE_AVATAR_ID = "avatar-03";
+// Add future avatars here. Each entry only needs a stable id, display name, and image path.
+const PROFILE_AVATARS = [
+  { id: "avatar-01", name: "NIGHT RUNNER", src: "./assets/images/profile/avatar-01.png" },
+  { id: "avatar-02", name: "CYBER ORACLE", src: "./assets/images/profile/avatar-02.png" },
+  { id: "avatar-03", name: "SHADOW AGENT", src: "./assets/images/profile/avatar-03.png" },
+];
 const SELECTABLE_AI_SKINS = [
   {
     id: "classic",
@@ -68,18 +76,27 @@ export function initLobby({
   const shopItemGrid = document.getElementById("shopItemGrid");
   const shopStatus = document.getElementById("shopStatus");
   const dailyUsbHistoryList = document.getElementById("dailyUsbHistoryList");
+  const profileBtn = document.getElementById("profileBtn");
+  const profilePanel = document.getElementById("profilePanel");
+  const profileAvatar = document.getElementById("profileAvatar");
+  const profileAvatarFallback = profileBtn?.querySelector(".profile-avatar-fallback");
+  const profileName = document.getElementById("profileName");
   const authPanel = createAuthPanel();
   const authUser = authPanel.querySelector(".lobby-auth-user");
-  const authAvatar = authPanel.querySelector(".lobby-auth-avatar");
   const authEmail = authPanel.querySelector(".lobby-auth-email");
   const authMessage = authPanel.querySelector(".lobby-auth-message");
   const authLoginBtn = authPanel.querySelector(".lobby-auth-login");
   const authLogoutBtn = authPanel.querySelector(".lobby-auth-logout");
+  const profilePreview = authPanel.querySelector(".profile-editor-avatar");
+  const profileNicknameInput = authPanel.querySelector("#profileNickname");
+  const profileNicknameStatus = authPanel.querySelector(".profile-nickname-status");
+  const profileAvatarPicker = authPanel.querySelector(".profile-avatar-picker");
 
   let active = true;
   let helpOverlayOpen = false;
   let skinPanelOpen = false;
   let modePanelOpen = false;
+  let profilePanelOpen = false;
   let stageSelectOpen = false;
   let returnToDailyMissionFromStageSelect = false;
   let returnToDailyMissionFromShop = false;
@@ -93,7 +110,7 @@ export function initLobby({
 
   document.body.classList.add("lobby-active");
   startBtn?.after(modePanel);
-  lobbyScreen?.querySelector(".lobby-panel")?.appendChild(authPanel);
+  profilePanel?.appendChild(authPanel);
   root?.appendChild(stageSelectPanel);
   skinBtn?.after(skinPanel);
   root?.appendChild(skinPurchaseModal);
@@ -236,33 +253,91 @@ export function initLobby({
     }
   });
 
-  const getAuthAvatarUrl = (session) => {
-    const metadata = session?.user?.user_metadata || {};
-    return metadata.avatar_url || metadata.picture || "";
+  const getProfileScope = () => authSession?.user?.id || "guest";
+
+  const getProfileSettings = () => {
+    try {
+      const stored = JSON.parse(window.localStorage?.getItem(PROFILE_STORAGE_KEY) || "{}");
+      const profile = stored?.[getProfileScope()] || {};
+      const avatarId = PROFILE_AVATARS.some((avatar) => avatar.id === profile.avatarId)
+        ? profile.avatarId
+        : DEFAULT_PROFILE_AVATAR_ID;
+      return {
+        avatarId,
+        nickname: typeof profile.nickname === "string" ? profile.nickname : "",
+      };
+    } catch {
+      return { avatarId: DEFAULT_PROFILE_AVATAR_ID, nickname: "" };
+    }
+  };
+
+  const saveProfileSettings = (patch) => {
+    try {
+      const stored = JSON.parse(window.localStorage?.getItem(PROFILE_STORAGE_KEY) || "{}");
+      stored[getProfileScope()] = { ...getProfileSettings(), ...patch };
+      window.localStorage?.setItem(PROFILE_STORAGE_KEY, JSON.stringify(stored));
+    } catch {
+      // Keep the current profile usable even when local storage is unavailable.
+    }
+  };
+
+  const getProfileAvatar = (avatarId) => {
+    return PROFILE_AVATARS.find((avatar) => avatar.id === avatarId)
+      || PROFILE_AVATARS.find((avatar) => avatar.id === DEFAULT_PROFILE_AVATAR_ID)
+      || PROFILE_AVATARS[0];
+  };
+
+  const getAuthDisplayName = (user) => {
+    const metadata = user?.user_metadata || {};
+    return metadata.full_name || metadata.name || metadata.user_name || metadata.nickname
+      || user?.email?.split("@")[0] || "GUEST USER";
+  };
+
+  const renderProfileAvatarPicker = (selectedId) => {
+    profileAvatarPicker?.querySelectorAll("[data-avatar-id]").forEach((button) => {
+      const selected = button.dataset.avatarId === selectedId;
+      button.classList.toggle("selected", selected);
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
   };
 
   const renderAuthPanel = () => {
     const user = authSession?.user || null;
     const signedIn = Boolean(user);
     const configured = Boolean(authService?.isAuthConfigured?.());
-    const avatarUrl = getAuthAvatarUrl(authSession);
+    const profileSettings = getProfileSettings();
+    const profileAvatarData = getProfileAvatar(profileSettings.avatarId);
+    const displayName = getAuthDisplayName(user);
+    const nickname = profileSettings.nickname || displayName;
 
     authUser?.classList.toggle("hidden", !signedIn);
     authLoginBtn?.classList.toggle("hidden", signedIn);
     authLogoutBtn?.classList.toggle("hidden", !signedIn);
     if (authEmail) authEmail.textContent = user?.email || "Google user";
-    if (authAvatar) {
-      authAvatar.classList.toggle("hidden", !avatarUrl);
-      if (avatarUrl) authAvatar.src = avatarUrl;
-      else authAvatar.removeAttribute("src");
+    if (profileName) profileName.textContent = nickname;
+    if (profileBtn) profileBtn.setAttribute("aria-label", `${nickname} 프로필 메뉴`);
+    if (profileAvatar) {
+      profileAvatar.classList.remove("hidden");
+      profileAvatar.src = profileAvatarData.src;
+      profileAvatar.alt = `${profileAvatarData.name} 프로필 이미지`;
     }
+    if (profilePreview) {
+      profilePreview.src = profileAvatarData.src;
+      profilePreview.alt = `${profileAvatarData.name} 프로필 이미지`;
+      profilePreview.classList.remove("hidden");
+    }
+    profileAvatarFallback?.classList.add("hidden");
+    if (profileNicknameInput && document.activeElement !== profileNicknameInput) {
+      profileNicknameInput.value = nickname;
+    }
+    renderProfileAvatarPicker(profileSettings.avatarId);
     if (authMessage) {
       authMessage.textContent = authLoading
-        ? "Checking login..."
+        ? "Checking Google link..."
         : authError || (
             !configured
               ? "Google login unavailable."
-              : signedIn ? "Google connected" : "Sign in to enable Cloud Save."
+              : signedIn ? "Google connected" : "Google not connected."
           );
     }
     if (authLoginBtn) {
@@ -360,6 +435,12 @@ export function initLobby({
     refreshModeButtons();
   };
 
+  const setProfilePanelOpen = (open) => {
+    profilePanelOpen = Boolean(open);
+    profileBtn?.setAttribute("aria-expanded", profilePanelOpen ? "true" : "false");
+    profilePanel?.classList.toggle("hidden", !profilePanelOpen);
+  };
+
   const setStageSelectOpen = (open) => {
     stageSelectOpen = Boolean(open);
     stageSelectPanel.classList.toggle("hidden", !stageSelectOpen);
@@ -371,6 +452,7 @@ export function initLobby({
   const showFeatureScreen = (screen) => {
     setSkinPanelOpen(false);
     setModePanelOpen(false);
+    setProfilePanelOpen(false);
     dailyMissionScreen?.classList.toggle("hidden", screen !== dailyMissionScreen);
     shopScreen?.classList.toggle("hidden", screen !== shopScreen);
     lobbyScreen?.classList.toggle("hidden", Boolean(screen));
@@ -385,6 +467,7 @@ export function initLobby({
     splashScreen?.classList.add("hidden");
     setSkinPanelOpen(false);
     setModePanelOpen(false);
+    setProfilePanelOpen(false);
     setSkinPurchaseModalOpen(false);
     setPathNoteModalOpen(false);
     showFeatureScreen(null);
@@ -413,6 +496,7 @@ export function initLobby({
   const closeLobbyPopups = (except = "") => {
     if (except !== "skin") setSkinPanelOpen(false);
     if (except !== "mode") setModePanelOpen(false);
+    if (except !== "profile") setProfilePanelOpen(false);
     setSkinPurchaseModalOpen(false);
     setPathNoteModalOpen(false);
   };
@@ -462,6 +546,7 @@ export function initLobby({
     active = false;
     root?.classList.add("hidden");
     document.body.classList.remove("lobby-active", "lobby-ready", "lobby-modal-open");
+    setProfilePanelOpen(false);
     setSkinPanelOpen(false);
     setModePanelOpen(false);
     setSkinPurchaseModalOpen(false);
@@ -546,6 +631,48 @@ export function initLobby({
     authSession = null;
     authLoading = false;
     renderAuthPanel();
+  });
+
+  authPanel.addEventListener("click", (event) => {
+    const actionButton = event.target?.closest?.("[data-profile-action]");
+    if (!actionButton) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const action = actionButton.dataset.profileAction;
+
+    if (action === "choose-avatar") {
+      profileAvatarPicker?.classList.toggle("hidden");
+      return;
+    }
+
+    if (action === "select-avatar") {
+      const avatarId = actionButton.dataset.avatarId;
+      if (!PROFILE_AVATARS.some((avatar) => avatar.id === avatarId)) return;
+      saveProfileSettings({ avatarId });
+      renderAuthPanel();
+      profileAvatarPicker?.classList.add("hidden");
+      return;
+    }
+
+    if (action === "save-nickname") {
+      const nickname = String(profileNicknameInput?.value || "").trim().slice(0, 18);
+      if (!nickname) {
+        if (profileNicknameStatus) profileNicknameStatus.textContent = "닉네임을 입력하세요.";
+        return;
+      }
+      saveProfileSettings({ nickname });
+      if (profileNicknameStatus) profileNicknameStatus.textContent = "닉네임이 저장되었습니다.";
+      renderAuthPanel();
+    }
+  });
+
+  profileBtn?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    startLobbyBgm();
+    const shouldOpen = !profilePanelOpen;
+    closeLobbyPopups("profile");
+    setProfilePanelOpen(shouldOpen);
   });
 
   document.addEventListener("keydown", (event) => {
@@ -763,6 +890,9 @@ export function initLobby({
     if (modePanelOpen && !event.target?.closest?.("#lobbyStartBtn, .lobby-mode-panel")) {
       setModePanelOpen(false);
     }
+    if (profilePanelOpen && !event.target?.closest?.("#profileBtn, .profile-panel")) {
+      setProfilePanelOpen(false);
+    }
   });
 
   const overlay = document.getElementById("overlay");
@@ -788,16 +918,40 @@ function createAuthPanel() {
   panel.className = "lobby-auth-panel";
   panel.setAttribute("aria-live", "polite");
   panel.innerHTML = `
-    <div class="lobby-auth-heading"><span aria-hidden="true">☁</span><strong>Protocol Account</strong></div>
-    <div class="lobby-auth-user hidden">
-      <img class="lobby-auth-avatar hidden" alt="" referrerpolicy="no-referrer" />
-      <span class="lobby-auth-email"></span>
-    </div>
-    <p class="lobby-auth-message">Sign in to enable Cloud Save.</p>
-    <div class="lobby-auth-actions">
-      <button class="lobby-button lobby-auth-login" type="button">Google Login</button>
-      <button class="lobby-button lobby-auth-logout hidden" type="button">Logout</button>
-    </div>
+    <section class="profile-nickname-section">
+      <div class="profile-section-heading"><strong>NICKNAME</strong></div>
+      <div class="profile-nickname-control">
+        <input id="profileNickname" type="text" maxlength="18" autocomplete="nickname" aria-label="닉네임" />
+        <button class="profile-save-button" type="button" data-profile-action="save-nickname">저장</button>
+      </div>
+      <p class="profile-nickname-status" aria-live="polite">로비에 표시할 이름입니다.</p>
+    </section>
+    <section class="profile-editor-section">
+      <div class="profile-section-heading"><strong>PROFILE IMAGE</strong></div>
+      <button class="profile-change-button" type="button" data-profile-action="choose-avatar">
+        <img class="profile-editor-avatar" alt="" />
+        <span><strong>프로필 변경</strong></span>
+        <b aria-hidden="true">›</b>
+      </button>
+      <div class="profile-avatar-picker hidden" aria-label="프로필 이미지 선택">
+        ${PROFILE_AVATARS.map((avatar) => `
+          <button class="profile-avatar-option" type="button" data-profile-action="select-avatar" data-avatar-id="${avatar.id}" aria-label="${avatar.name}" aria-pressed="false">
+            <img src="${avatar.src}" alt="" />
+          </button>`).join("")}
+      </div>
+    </section>
+    <section class="profile-link-section">
+      <div class="profile-section-heading"><strong>GOOGLE LINK STATUS</strong></div>
+      <div class="lobby-auth-user hidden">
+        <span class="profile-link-dot" aria-hidden="true"></span>
+        <span class="lobby-auth-email"></span>
+      </div>
+      <p class="lobby-auth-message">Checking Google link...</p>
+      <div class="lobby-auth-actions">
+        <button class="lobby-button lobby-auth-login" type="button">Google Login</button>
+        <button class="lobby-button lobby-auth-logout hidden" type="button">Logout</button>
+      </div>
+    </section>
   `;
   return panel;
 }

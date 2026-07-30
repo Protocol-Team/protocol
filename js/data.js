@@ -994,6 +994,152 @@ const STAGE_ONE_LAYOUT_PRESET_BY_ID = new Map(
   STAGE_ONE_LAYOUT_PRESETS.map((preset) => [preset.id, preset])
 );
 
+// DARK WEB 전용 맵 레이아웃.
+// A/D는 기존 무한 모드의 기본 구조를 유지하고, B/E는 그 구조를 좌우 반전한다.
+// C는 중앙 타워를 넘는 상·하단 지그재그 루트로 별도 설계한다.
+const DARK_WEB_CANVAS_WIDTH = 1200;
+
+function createDarkWebBaseLayout(mapId) {
+  return {
+    id: `darkweb-${mapId}-base`,
+    name: `Dark Web Map ${mapId}`,
+    description: "중앙 보안 기둥을 기준으로 상단 지름길과 하단 우회로가 갈라지는 기존 침투 구조",
+    playerStart: { x: 64, y: 388, facing: 1 },
+    goal: {
+      x: 1088,
+      y: 392,
+      w: 42,
+      h: 70,
+      type: "core",
+      label: "Data Core",
+    },
+    platforms: [
+      { id: `darkweb-${mapId}-ground`, x: 0, y: 462, w: 1200, h: 78, role: "main-route", mapObject: "research-lab-floor" },
+      { id: `darkweb-${mapId}-entry-step`, x: 240, y: 366, w: 144, h: 48, role: "entry-step", mapObject: "server-rack-step" },
+      { id: `darkweb-${mapId}-low-bypass`, x: 384, y: 414, w: 144, h: 48, role: "low-bypass", mapObject: "cooling-unit" },
+      { id: `darkweb-${mapId}-security-pillar`, x: 576, y: 174, w: 48, h: 192, role: "chokepoint-wall", mapObject: "security-pillar" },
+      { id: `darkweb-${mapId}-wall-jump-route`, x: 624, y: 222, w: 144, h: 48, role: "wall-jump-fast-route", mapObject: "data-overpass" },
+      { id: `darkweb-${mapId}-exit-step`, x: 720, y: 414, w: 144, h: 48, role: "exit-step", mapObject: "server-rack-step" },
+      { id: `darkweb-${mapId}-goal-approach`, x: 912, y: 318, w: 144, h: 48, role: "goal-approach", mapObject: "data-bridge" },
+    ],
+    trapNodes: [
+      { id: `darkweb-${mapId}-laser-entry`, type: "laser", x: 336, y: 354, w: 15, h: 108, recommendedTrap: "laser", teaches: ["timing", "vertical-threat"] },
+      { id: `darkweb-${mapId}-shock-exit`, type: "shock", x: 768, y: 400, w: 96, h: 14, recommendedTrap: "shock", teaches: ["ground-threat", "route-choice"] },
+      { id: `darkweb-${mapId}-camera-overpass`, type: "camera", x: 600, y: 150, w: 144, h: 72, recommendedTrap: "camera", teaches: ["detection", "platform-risk"] },
+    ],
+    wallTrapSlots: [
+      { id: `darkweb-${mapId}-wall-pillar-left`, x: 564, y: 210, surface: "security-pillar-left", allowedTraps: ["laser", "shock", "emp"] },
+      { id: `darkweb-${mapId}-wall-pillar-right`, x: 630, y: 210, surface: "security-pillar-right", allowedTraps: ["camera", "firewall"] },
+      { id: `darkweb-${mapId}-wall-goal-panel`, x: 1032, y: 288, surface: "goal-server-panel", allowedTraps: ["laser", "camera", "firewall"] },
+    ],
+  };
+}
+
+function mirrorDarkWebLayout(layout, mapId) {
+  const mirrorX = (x, w = 0) => DARK_WEB_CANVAS_WIDTH - x - w;
+  return {
+    ...layout,
+    id: `darkweb-${mapId}-mirror`,
+    name: `Dark Web Map ${mapId} · Mirror`,
+    description: "기존 침투 구조를 좌우 반전한 역방향 침투 맵",
+    playerStart: { ...layout.playerStart, x: mirrorX(layout.playerStart.x, 30), facing: -1 },
+    goal: { ...layout.goal, x: mirrorX(layout.goal.x, layout.goal.w) },
+    platforms: layout.platforms.map((platform) => ({
+      ...platform,
+      id: platform.id.replace(/darkweb-\d+/, `darkweb-${mapId}`),
+      x: mirrorX(platform.x, platform.w),
+    })),
+    trapNodes: layout.trapNodes.map((node) => ({
+      ...node,
+      id: node.id.replace(/darkweb-\d+/, `darkweb-${mapId}`),
+      x: mirrorX(node.x, node.w || 0),
+    })),
+    wallTrapSlots: layout.wallTrapSlots.map((slot) => ({
+      ...slot,
+      id: slot.id.replace(/darkweb-\d+/, `darkweb-${mapId}`),
+      x: mirrorX(slot.x, 0),
+      surface: `${slot.surface}-mirrored`,
+    })),
+  };
+}
+
+const DARK_WEB_CORE_LAYOUT = {
+  id: "darkweb-5-signal-lattice",
+  name: "Signal Lattice",
+  description: "중앙 수직 타워를 넘어 상·하단 지그재그 루트를 선택하는 메인 코어 룸",
+  playerStart: { x: 64, y: 388, facing: 1 },
+  goal: {
+    x: 1052,
+    y: 162,
+    w: 42,
+    h: 70,
+    type: "core",
+    label: "Main Core",
+  },
+  platforms: [
+    { id: "darkweb-5-ground", x: 0, y: 462, w: 1200, h: 78, role: "main-route", mapObject: "research-lab-floor" },
+    { id: "darkweb-5-entry-terrace", x: 144, y: 400, w: 144, h: 62, role: "entry-step", mapObject: "server-rack-step" },
+    { id: "darkweb-5-upper-left", x: 310, y: 330, w: 150, h: 48, role: "wall-jump-fast-route", mapObject: "data-bridge" },
+    { id: "darkweb-5-signal-tower", x: 500, y: 170, w: 52, h: 244, role: "chokepoint-wall", mapObject: "ai-core-pillar" },
+    { id: "darkweb-5-upper-middle", x: 552, y: 244, w: 150, h: 48, role: "fast-exit", mapObject: "data-overpass" },
+    { id: "darkweb-5-lower-middle", x: 730, y: 372, w: 140, h: 48, role: "low-route-exit", mapObject: "cooling-unit" },
+    { id: "darkweb-5-upper-right", x: 840, y: 286, w: 144, h: 48, role: "goal-approach", mapObject: "server-rack-step" },
+    { id: "darkweb-5-core-deck", x: 1008, y: 232, w: 150, h: 48, role: "goal-approach", mapObject: "data-bridge" },
+  ],
+  trapNodes: [
+    { id: "darkweb-5-laser-entry", type: "laser", x: 270, y: 352, w: 15, h: 110, recommendedTrap: "laser", teaches: ["timing", "vertical-threat"] },
+    { id: "darkweb-5-camera-tower", type: "camera", x: 448, y: 96, w: 144, h: 74, recommendedTrap: "camera", teaches: ["detection", "wall-surface", "platform-risk"] },
+    { id: "darkweb-5-shock-lower-route", type: "shock", x: 758, y: 358, w: 96, h: 14, recommendedTrap: "shock", teaches: ["ground-threat", "route-choice"] },
+    { id: "darkweb-5-emp-core-deck", type: "emp", x: 1032, y: 218, w: 96, h: 14, recommendedTrap: "emp", teaches: ["energy-management", "goal-approach"] },
+  ],
+  wallTrapSlots: [
+    { id: "darkweb-5-tower-left", x: 488, y: 194, surface: "signal-tower-left", allowedTraps: ["laser", "shock", "emp"] },
+    { id: "darkweb-5-tower-right", x: 556, y: 194, surface: "signal-tower-right", allowedTraps: ["camera", "firewall"] },
+    { id: "darkweb-5-core-panel", x: 984, y: 224, surface: "core-deck-panel", allowedTraps: ["laser", "camera", "firewall"] },
+  ],
+};
+
+const DARK_WEB_LAYOUT_BY_MAP_ID = {
+  1: createDarkWebBaseLayout("1"),
+  3: mirrorDarkWebLayout(createDarkWebBaseLayout("1"), "3"),
+  5: DARK_WEB_CORE_LAYOUT,
+  7: createDarkWebBaseLayout("7"),
+  9: mirrorDarkWebLayout(createDarkWebBaseLayout("7"), "9"),
+};
+
+function cloneDarkWebLayout(layout) {
+  return {
+    ...layout,
+    playerStart: { ...layout.playerStart },
+    goal: { ...layout.goal },
+    platforms: layout.platforms.map((platform) => ({ ...platform })),
+    trapNodes: layout.trapNodes.map((node) => ({ ...node, teaches: node.teaches ? node.teaches.slice() : [] })),
+    wallTrapSlots: layout.wallTrapSlots.map((slot) => ({ ...slot, allowedTraps: slot.allowedTraps ? slot.allowedTraps.slice() : [] })),
+  };
+}
+
+export function getDarkWebStageByMapId(mapId, stageId = 13) {
+  const layout = DARK_WEB_LAYOUT_BY_MAP_ID[Number(mapId)] || DARK_WEB_LAYOUT_BY_MAP_ID[1];
+  const clonedLayout = cloneDarkWebLayout(layout);
+  return {
+    id: Number(stageId),
+    name: clonedLayout.name,
+    mode: "darkweb",
+    securityLevel: 5,
+    theme: { id: "dark-web", name: clonedLayout.name, palette: "core", securityTone: "final", background: "server-room" },
+    mapIntent: { role: "dark-web", learningGoals: ["movement", "route-choice", "goal", "trap-slot", "wall-surface"], difficulty: 5, description: clonedLayout.description, pacing: {} },
+    backgroundLayers: { far: ["future-city", "firewall-grid"], mid: ["server-rack", "security-panel", "access-gate"], front: ["large-square-tile", "platform-floor", "gate-frame", "glow-line"], fx: ["scan-line", "warning-pulse"] },
+    objective: "메인 코어 룸 진입",
+    timeLimit: Number(stageId) % 2 === 1 ? 15 : 48,
+    playerStart: clonedLayout.playerStart,
+    goal: clonedLayout.goal,
+    platforms: clonedLayout.platforms,
+    trapNodes: clonedLayout.trapNodes,
+    wallTrapSlots: clonedLayout.wallTrapSlots,
+    reward: { choices: 3, pools: { attack: "attack", defense: "defense" } },
+  };
+}
+
 export const WIDTH = 1200;
 export const HEIGHT = 540;
 export const GRAVITY = 1600;

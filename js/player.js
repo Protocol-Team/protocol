@@ -64,9 +64,10 @@ const HACK_SCAN_VERTICAL_PADDING = 120;
 const LANDING_POSE_DURATION = 0.22;
 
 export function createHacker(game) {
+  const playerStart = game.stageData?.playerStart || { x: 64, y: 388, facing: 1 };
   return {
-    x: 64,
-    y: 388,
+    x: playerStart.x,
+    y: playerStart.y,
     w: 30,
     h: HACKER_STAND_HEIGHT,
     standHeight: HACKER_STAND_HEIGHT,
@@ -76,7 +77,7 @@ export function createHacker(game) {
 
     speed: 250,
     jumpPower: 620,
-    facing: 1,
+    facing: playerStart.facing || 1,
     onGround: false,
     wallGrab: false,
     wallSide: 0,
