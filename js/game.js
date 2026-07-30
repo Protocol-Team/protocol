@@ -29,11 +29,11 @@ import {
 } from "./trap.js?v=20260729-camera-triangle-tutorial-v2";
 import { startReplay as startReplayMode, updateDefenseReplay } from "./replay.js?v=20260724-stage-effect-cleanup";
 import { playBgm, playLobbyBgm, playSfx, stopAllSfx, stopBgm, stopSfx } from "./audio.js?v=20260724-stage-effect-cleanup";
-import { initLobby } from "./lobby.js?v=20260724-daily-mission-rewards-v2";
+import { initLobby } from "./lobby.js?v=20260730-daily-mission-all-clear-v6";
 import {
   recordDailyMissionEvent,
   recordStageClearForDailyMissions,
-} from "./repositories/dailyMissionRepository.js?v=20260724-daily-mission-rewards-v2";
+} from "./repositories/dailyMissionRepository.js?v=20260730-daily-mission-all-clear-v3";
 import { getBestStage, resetBestStage, saveBestStage } from "./repositories/localGameRepository.js";
 
 const BGM_TRACKS = {
@@ -1048,6 +1048,9 @@ function endStage(success, text, options = {}) {
     return;
   }
 
+  if (game.mode === "classic" && completedTurn === TURN.ATTACK) {
+    recordDailyMissionEvent("classicPlay");
+  }
   recordStageClearForDailyMissions({ mode: game.mode, stage: completedStage });
 
   consumeActiveEffectsForStage(completedTurn);
@@ -1907,7 +1910,6 @@ function loop(now) {
 function startMission(mode = "classic", selectedStage = 1) {
   if (stageStarted) return;
   stageStarted = true;
-  if (mode === "classic") recordDailyMissionEvent("classicPlay");
   uiModule.setSettingsPanelOpen?.(false);
   resetRunState({ mode, stage: selectedStage });
   if (game.mode === "darkweb") {
