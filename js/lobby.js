@@ -13,7 +13,15 @@ import {
   getDailyUsbHistory,
   getMillisecondsUntilMidnight,
   recordDailyMissionEvent,
-} from "./repositories/dailyMissionRepository.js?v=20260730-daily-mission-all-clear-v3";
+  spendDailyMissionUsb,
+  addDailyMissionUsb,
+} from "./repositories/dailyMissionRepository.js?v=20260730-shop-v1";
+import {
+  SHOP_ITEMS,
+  getShopState,
+  purchaseShopItem,
+  recordUsbPackPurchase,
+} from "./repositories/shopRepository.js";
 
 const CLASSIC_CLEAR_STORAGE_KEY = "traceProtocolClassicStage11Returned";
 const SELECTABLE_AI_SKINS = [
@@ -56,6 +64,9 @@ export function initLobby({
   const dailyMissionAllClear = document.getElementById("dailyMissionAllClear");
   const dailyUsbCount = document.getElementById("dailyUsbCount");
   const totalUsbCount = document.getElementById("totalUsbCount");
+  const shopUsbCount = document.getElementById("shopUsbCount");
+  const shopItemGrid = document.getElementById("shopItemGrid");
+  const shopStatus = document.getElementById("shopStatus");
   const dailyUsbHistoryList = document.getElementById("dailyUsbHistoryList");
   const authPanel = createAuthPanel();
   const authUser = authPanel.querySelector(".lobby-auth-user");
@@ -91,6 +102,7 @@ export function initLobby({
   const refreshDailyMission = (state = getDailyMissionState()) => {
     if (dailyUsbCount) dailyUsbCount.textContent = String(state.todayUsb || 0);
     if (totalUsbCount) totalUsbCount.textContent = String(state.totalUsb || 0);
+    if (shopUsbCount) shopUsbCount.textContent = String(state.walletUsb || 0);
     const hackerAiProgress = dailyMissionScreen?.querySelector(
       '[data-mission-id="hackerAiClear"] .daily-mission-progress'
     );
@@ -151,6 +163,78 @@ export function initLobby({
   updateDailyMissionCountdown();
   window.setInterval(updateDailyMissionCountdown, 1000);
   window.addEventListener("protocol:daily-mission-update", (event) => refreshDailyMission(event.detail));
+
+  const setShopStatus = (message = "") => {
+    if (shopStatus) shopStatus.textContent = message;
+  };
+
+  const renderShopItems = () => {
+    if (!shopItemGrid) return;
+    const state = getShopState();
+    shopItemGrid.innerHTML = SHOP_ITEMS.map((item) => {
+      const claimed = item.freeOnce && state.claimedOffers[item.id];
+      const price = item.price
+        ? `<span class="shop-price-usb"><span class="usb-token" aria-hidden="true"><i></i><b>USB</b></span>${item.price}</span>`
+        : "무료 획득";
+      return `
+        <article class="shop-product">
+          <span class="shop-product-tag">${item.freeOnce ? "WELCOME OFFER" : "CONSUMABLE"}</span>
+          <h4>${item.name}</h4>
+          <div class="shop-item-icon" aria-hidden="true">${item.icon}</div>
+          <p class="shop-item-desc">${item.desc}</p>
+          <span class="shop-item-owned">보유 : ${Math.max(0, Number(state.inventory[item.id]) || 0)}개</span>
+          <button type="button" data-buy-item="${item.id}" ${claimed ? "disabled" : ""}>${claimed ? "획득 완료" : price}</button>
+        </article>`;
+    }).join("");
+  };
+
+  renderShopItems();
+  window.addEventListener("protocol:shop-update", renderShopItems);
+
+  shopScreen?.addEventListener("click", (event) => {
+    const tab = event.target?.closest?.("[data-shop-tab]");
+    if (tab) {
+      const selected = tab.dataset.shopTab;
+      shopScreen.querySelectorAll("[data-shop-tab]").forEach((button) => {
+        const activeTab = button.dataset.shopTab === selected;
+        button.classList.toggle("is-active", activeTab);
+        button.setAttribute("aria-selected", String(activeTab));
+      });
+      shopScreen.querySelectorAll("[data-shop-panel]").forEach((panel) => {
+        panel.classList.toggle("hidden", panel.dataset.shopPanel !== selected);
+      });
+      setShopStatus();
+      playSfx("click");
+      return;
+    }
+
+    const itemButton = event.target?.closest?.("[data-buy-item]");
+    if (itemButton) {
+      const result = purchaseShopItem(itemButton.dataset.buyItem, spendDailyMissionUsb);
+      setShopStatus(result.ok ? "아이템이 보관함에 추가되었습니다." : result.reason === "balance" ? "USB가 부족합니다." : "이미 획득한 상품입니다.");
+      refreshDailyMission();
+      if (result.ok) playSfx("click");
+      return;
+    }
+
+    const packButton = event.target?.closest?.("[data-usb-pack]");
+    if (packButton) {
+      const amount = Math.max(0, Number(packButton.dataset.usbPack) || 0);
+      if (amount === 1) {
+        const today = new Date().toISOString().slice(0, 10);
+        const key = "traceProtocolFreeUsbPackDate";
+        if (window.localStorage?.getItem(key) === today) {
+          setShopStatus("무료 USB는 하루에 한 번 획득할 수 있습니다.");
+          return;
+        }
+        window.localStorage?.setItem(key, today);
+      }
+      addDailyMissionUsb(amount);
+      recordUsbPackPurchase();
+      setShopStatus(amount === 1 ? "무료 USB 1개를 획득했습니다." : `결제 데모 완료: USB ${amount}개가 충전되었습니다.`);
+      playSfx("click");
+    }
+  });
 
   const getAuthAvatarUrl = (session) => {
     const metadata = session?.user?.user_metadata || {};

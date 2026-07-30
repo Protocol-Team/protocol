@@ -24,6 +24,7 @@ function emptyState(today, totalUsb = 0, history = {}) {
     schemaVersion: SCHEMA_VERSION,
     dateKey: today,
     totalUsb: Math.max(0, Number(totalUsb) || 0),
+    walletUsb: Math.max(0, Number(totalUsb) || 0),
     todayUsb: 0,
     history: { ...history },
     progress: Object.fromEntries(MISSIONS.map(({ id }) => [id, 0])),
@@ -93,6 +94,7 @@ export function getDailyMissionState(now = new Date()) {
     ...stored,
     progress: { ...defaults.progress, ...stored.progress },
     claimed: { ...stored.claimed },
+    walletUsb: Math.max(0, Number(stored.walletUsb ?? stored.totalUsb) || 0),
   };
 }
 
@@ -106,6 +108,7 @@ export function recordDailyMissionEvent(type, amount = 1, now = new Date()) {
     state.claimed[type] = true;
     state.todayUsb += mission.reward;
     state.totalUsb += mission.reward;
+    state.walletUsb += mission.reward;
   }
   const completedCount = DAILY_FOUR_CLEAR_IDS.filter((id) => state.claimed[id]).length;
   state.progress.dailyFourClear = Math.min(4, completedCount);
@@ -114,13 +117,34 @@ export function recordDailyMissionEvent(type, amount = 1, now = new Date()) {
     state.claimed.dailyFourClear = true;
     state.todayUsb += dailyFourMission.reward;
     state.totalUsb += dailyFourMission.reward;
+    state.walletUsb += dailyFourMission.reward;
   }
   if (MISSIONS.every(({ id }) => state.claimed[id]) && !state.claimed.allDaily) {
     state.claimed.allDaily = true;
     state.todayUsb += ALL_DAILY_REWARD;
     state.totalUsb += ALL_DAILY_REWARD;
+    state.walletUsb += ALL_DAILY_REWARD;
   }
   state.history = { ...state.history, [state.dateKey]: state.todayUsb };
+  writeState(state);
+  window.dispatchEvent(new CustomEvent("protocol:daily-mission-update", { detail: state }));
+  return state;
+}
+
+export function spendDailyMissionUsb(amount) {
+  const cost = Math.max(0, Number(amount) || 0);
+  const state = getDailyMissionState();
+  if (state.walletUsb < cost) return false;
+  state.walletUsb -= cost;
+  writeState(state);
+  window.dispatchEvent(new CustomEvent("protocol:daily-mission-update", { detail: state }));
+  return true;
+}
+
+export function addDailyMissionUsb(amount) {
+  const added = Math.max(0, Number(amount) || 0);
+  const state = getDailyMissionState();
+  state.walletUsb += added;
   writeState(state);
   window.dispatchEvent(new CustomEvent("protocol:daily-mission-update", { detail: state }));
   return state;
