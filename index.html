@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="screen-orientation" content="landscape" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260708-icons" />
-  <link rel="stylesheet" href="./style.css?v=20260730-shop-v20" />
+  <link rel="stylesheet" href="./style.css?v=20260803-shop-rotation-v3" />
 </head>
 <body>
   <div id="lobbyRoot" class="lobby-root" aria-live="polite">
@@ -34,6 +34,45 @@
           <button id="lobbyMissionBtn" class="lobby-button" type="button">MISSON</button>
           <button id="lobbyShopBtn" class="lobby-button" type="button">SHOP</button>
         </div>
+        <button id="lobbySeasonPassBtn" class="season-pass-lobby-button" type="button">
+          <span class="season-pass-lobby-mark" aria-hidden="true">★</span>
+          <span><strong>SEASON PASS</strong><small>시즌패스</small></span>
+          <b id="seasonPassLobbyLevel">LV. 1</b>
+        </button>
+      </div>
+    </section>
+
+    <section id="seasonPassScreen" class="lobby-feature-screen season-pass-screen hidden" aria-label="시즌패스">
+      <div class="season-pass-board">
+        <header class="season-pass-header">
+          <div>
+            <p class="lobby-kicker">SEASON 01 · NEON CIRCUIT</p>
+            <h2>시즌패스</h2>
+          </div>
+          <div class="season-pass-progress-block">
+            <div class="season-pass-level-line"><strong id="seasonPassLevel">LV. 1</strong><span id="seasonPassXpLabel">0 / 10 XP</span></div>
+            <div class="season-pass-xp-bar"><span id="seasonPassXpBar"></span></div>
+          </div>
+          <div class="season-pass-header-actions">
+            <button id="seasonPassPremiumBtn" class="season-pass-premium-button" type="button">프리미엄 패스 구매 · KRW 9,900</button>
+            <button class="lobby-button season-pass-back" type="button" data-action="back-to-lobby">BACK</button>
+          </div>
+        </header>
+        <div class="season-pass-toolbar">
+          <p>일일미션 완료 시 XP <strong>+5</strong> · XP <strong>10</strong>마다 레벨 상승</p>
+          <button id="seasonPassClaimAllBtn" class="season-pass-claim-all" type="button">받을 수 있는 보상 모두 수령</button>
+        </div>
+        <div class="season-pass-body">
+          <div class="season-pass-labels" aria-hidden="true">
+            <div class="season-pass-label-spacer">LEVEL</div>
+            <div class="season-pass-track-label free"><span>무료보상</span><small>FREE TRACK</small></div>
+            <div class="season-pass-track-label premium"><span>프리미엄 보상</span><small>PREMIUM TRACK</small></div>
+          </div>
+          <div id="seasonPassScroller" class="season-pass-scroller" tabindex="0" aria-label="시즌패스 레벨 보상 목록">
+            <div id="seasonPassTrack" class="season-pass-track"></div>
+          </div>
+        </div>
+        <p id="seasonPassStatus" class="season-pass-footnote">보상 카드를 눌러 수령하세요. 프리미엄 트랙은 패스 구매 후 잠금 해제됩니다.</p>
       </div>
     </section>
 
@@ -48,7 +87,7 @@
             <div class="daily-mission-all-clear-message">
               <span>축하드립니다. 6개의 일일미션을 모두 완료하여 추가 보상을 제공합니다.</span>
               <span class="daily-mission-all-clear-reward">
-                <span class="usb-token" aria-hidden="true"><i></i><b>USB</b></span>
+                <span class="usb-token" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span>
                 <strong>5개</strong>
               </span>
             </div>
@@ -63,17 +102,17 @@
           <article class="daily-mission-card daily-mission-attendance" data-mission-id="attendance">
             <span class="daily-mission-index">01</span>
             <button class="daily-mission-claim" type="button">출석 체크</button>
-            <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><i></i><b>USB</b></span><strong>2개</strong></div>
+            <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span><strong>1개</strong></div>
           </article>
           <article class="daily-mission-card daily-mission-shop-link" data-mission-id="shopVisit" role="button" tabindex="0">
             <span class="daily-mission-index">02</span>
             <h3>상점 방문</h3>
-            <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><i></i><b>USB</b></span><strong>2개</strong></div>
+            <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span><strong>1개</strong></div>
           </article>
           <article class="daily-mission-card daily-mission-stage-link" data-mission-id="classicPlay" role="button" tabindex="0">
             <span class="daily-mission-index">03</span>
             <h3>1일 1회<br />클래식 모드 클리어</h3>
-            <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><i></i><b>USB</b></span><strong>3개</strong></div>
+            <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span><strong>1개</strong></div>
           </article>
           <article class="daily-mission-card daily-mission-stage-link" data-mission-id="hackerAiClear" role="button" tabindex="0">
             <span class="daily-mission-index">04</span>
@@ -84,17 +123,17 @@
                 <p>AI : <strong data-role="ai-remaining">3판</strong> 남음</p>
               </div>
             </div>
-            <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><i></i><b>USB</b></span><strong>4개</strong></div>
+            <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span><strong>2개</strong></div>
           </article>
           <article class="daily-mission-card" data-mission-id="dailyFourClear">
             <span class="daily-mission-index">05</span>
             <h3>일일 미션 4회 클리어</h3>
-            <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><i></i><b>USB</b></span><strong>4개</strong></div>
+            <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span><strong>2개</strong></div>
           </article>
           <article class="daily-mission-card" data-mission-id="darkWebCore">
             <span class="daily-mission-index">06</span>
             <h3>DARK WEB MODE에서<br />메인 코어 룸 진입</h3>
-            <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><i></i><b>USB</b></span><strong>5개</strong></div>
+            <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span><strong>2개</strong></div>
           </article>
         </div>
 
@@ -129,15 +168,15 @@
           </nav>
           <div class="shop-content">
             <div class="shop-wallet" aria-label="보유 USB">
-              <span class="usb-token" aria-hidden="true"><i></i><b>USB</b></span>
+              <span class="usb-token" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span>
               <strong id="shopUsbCount">0</strong>
             </div>
             <section class="shop-panel" data-shop-panel="item">
               <div class="shop-panel-heading">
                 <div><h3>일반 상점</h3><span class="shop-eyebrow">GENERAL STORE</span></div>
-                <p>게임 플레이에 필요한 아이템을 USB로 구매할 수 있습니다.</p>
+                <p>오늘의 무료·할인 상품을 확인하고 오른쪽으로 스크롤해 정가 아이템을 구매할 수 있습니다.</p>
               </div>
-              <div id="shopItemGrid" class="shop-product-grid"></div>
+              <div id="shopItemGrid" class="shop-product-grid shop-item-grid"></div>
             </section>
             <section class="shop-panel hidden" data-shop-panel="usb">
               <div class="shop-panel-heading">
@@ -146,9 +185,9 @@
               </div>
               <div class="shop-product-grid shop-usb-grid">
                 <article class="shop-product usb-pack"><span class="shop-product-tag">DAILY</span><h4>무료 USB</h4><div class="storage-art storage-usb"><span></span></div><p class="shop-item-desc">매일 한 번 무료 USB를 획득합니다.</p><strong class="pack-amount">USB ×1</strong><button type="button" data-usb-pack="1">무료 획득</button></article>
-                <article class="shop-product usb-pack"><span class="shop-product-tag">PORTABLE</span><h4>USB 드라이브</h4><div class="storage-art storage-stick"><span></span></div><p class="shop-item-desc">휴대용 저장 장치에 USB를 충전합니다.</p><strong class="pack-amount">USB ×25</strong><button type="button" data-usb-pack="25">KRW 2,500</button></article>
-                <article class="shop-product usb-pack"><span class="shop-product-tag">EXTERNAL</span><h4>외장 하드</h4><div class="storage-art storage-drive"><span></span></div><p class="shop-item-desc">확장된 외장 저장소에 USB를 보관합니다.</p><strong class="pack-amount">USB ×50</strong><button type="button" data-usb-pack="50">KRW 4,950</button></article>
-                <article class="shop-product usb-pack"><span class="shop-product-tag">CLOUD</span><h4>클라우드 시스템</h4><div class="storage-art storage-cloud"><span></span></div><p class="shop-item-desc">클라우드 저장소에 대용량 USB를 충전합니다.</p><strong class="pack-amount">USB ×100</strong><button type="button" data-usb-pack="100">KRW 9,900</button></article>
+                <article class="shop-product usb-pack"><span class="shop-product-tag">PORTABLE</span><h4>USB 드라이브</h4><div class="storage-art storage-stick"><span></span></div><p class="shop-item-desc">휴대용 저장 장치에 USB를 충전합니다.</p><strong class="pack-amount">USB ×5</strong><button type="button" data-usb-pack="5">KRW 1,000</button></article>
+                <article class="shop-product usb-pack"><span class="shop-product-tag">EXTERNAL</span><h4>외장 하드</h4><div class="storage-art storage-drive"><span></span></div><p class="shop-item-desc">확장된 외장 저장소에 USB를 보관합니다.</p><strong class="pack-amount">USB ×25</strong><button type="button" data-usb-pack="25">KRW 4,500</button></article>
+                <article class="shop-product usb-pack"><span class="shop-product-tag">CLOUD</span><h4>클라우드 시스템</h4><div class="storage-art storage-cloud"><span></span></div><p class="shop-item-desc">클라우드 저장소에 대용량 USB를 충전합니다.</p><strong class="pack-amount">USB ×60</strong><button type="button" data-usb-pack="60">KRW 9,900</button></article>
               </div>
             </section>
             <p id="shopStatus" class="shop-status" aria-live="polite"></p>
@@ -284,7 +323,7 @@
       }
     }
 
-    await import("./js/game.js?v=20260730-shop-v2");
+    await import("./js/game.js?v=20260803-shop-rotation-v3");
   </script>
 </body>
 </html>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title>실드 모듈 방패</title>
+  <defs><linearGradient id="shield" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#dffcff"/><stop offset=".42" stop-color="#18e0ff"/><stop offset="1" stop-color="#174d72"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <path d="M64 10 108 27v33c0 27-18 45-44 58C38 105 20 87 20 60V27z" fill="#071321" stroke="#263c55" stroke-width="7"/>
+  <path d="M64 19 98 32v27c0 20-13 34-34 45C43 93 30 79 30 59V32z" fill="url(#shield)" stroke="#b9ffff" stroke-width="3"/>
+  <path d="M64 34 84 42v17c0 12-7 21-20 28-13-7-20-16-20-28V42z" fill="#092c3c" stroke="#27ffc8" stroke-width="3" filter="url(#glow)"/>
+  <path d="m52 59 8 8 17-18" fill="none" stroke="#efffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M14 39h8M106 39h8M17 81h7M104 81h7" stroke="#ffda73" stroke-width="3" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title>에너지 최대치 증가 배터리</title>
+  <defs><linearGradient id="body" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#66849b"/><stop offset=".48" stop-color="#18283b"/><stop offset="1" stop-color="#07121f"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <rect x="43" y="10" width="42" height="12" rx="3" fill="#ffda3e" stroke="#fff0a5" stroke-width="3"/>
+  <rect x="25" y="19" width="78" height="96" rx="14" fill="url(#body)" stroke="#9eeaff" stroke-width="4"/>
+  <rect x="35" y="30" width="58" height="74" rx="8" fill="#06303e" stroke="#18e0ff" stroke-width="2"/>
+  <path d="m72 34-26 39h18l-7 23 27-41H66z" fill="#fff35c" stroke="#ffcc00" stroke-width="3" filter="url(#glow)"/>
+  <path d="M31 45h8M31 58h8M89 45h8M89 58h8" stroke="#27ffc8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M42 115h44" stroke="#ffda73" stroke-width="4" stroke-linecap="round"/>
+</svg>

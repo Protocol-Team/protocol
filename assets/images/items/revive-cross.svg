@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title>부활 십자가</title>
+  <defs><linearGradient id="cross" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#efffff"/><stop offset=".42" stop-color="#27ffc8"/><stop offset="1" stop-color="#177b9a"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <path d="M50 10h28v28h30v28H78v42H50V66H20V38h30z" fill="#071321" stroke="#334b61" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M54 15h20v28h29v18H74v42H54V61H25V43h29z" fill="url(#cross)" stroke="#eaffff" stroke-width="3" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M64 30v65M38 52h51" stroke="#fff" stroke-opacity=".65" stroke-width="3"/>
+  <g fill="#fff"><circle cx="17" cy="26" r="3"/><circle cx="109" cy="23" r="3"/><circle cx="114" cy="94" r="3"/><circle cx="24" cy="99" r="3"/></g>
+</svg>

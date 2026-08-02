@@ -294,55 +294,23 @@ button.secondary {
 
 .usb-token {
   position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 48px;
-  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 34px;
   margin-left: 7px;
-  border: 1px solid rgba(255, 92, 219, 0.78);
-  border-radius: 4px 7px 7px 4px;
-  background: linear-gradient(135deg, #ff35bd, #7d3cff);
-  box-shadow: 0 0 12px rgba(255, 53, 189, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.32);
-  transform: skewX(-9deg);
+  background: transparent;
 }
 
-.usb-token::before {
-  content: "";
-  position: absolute;
-  left: -10px;
-  width: 10px;
-  height: 14px;
-  border: 1px solid #8befff;
-  border-right: 0;
-  border-radius: 2px 0 0 2px;
-  background: linear-gradient(180deg, #dffcff, #70b9cb);
-}
-
-.usb-token::after {
-  content: "";
-  position: absolute;
-  left: -7px;
-  width: 5px;
-  height: 2px;
-  border-top: 2px solid #174458;
-  border-bottom: 2px solid #174458;
-}
-
-.usb-token i {
-  position: absolute;
-  right: 5px;
-  width: 5px;
-  height: 5px;
-  border: 1px solid #bff7ff;
-  border-radius: 50%;
-  box-shadow: 0 0 5px #8ff5ff;
-}
-
-.usb-token b {
-  color: #fff;
-  font-size: 8px;
-  letter-spacing: 0.5px;
-  transform: skewX(9deg);
+.usb-token img,
+.usb-token-image {
+  display: block;
+  width: 60px;
+  height: 36px;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(24, 224, 255, 0.32));
 }
 
 .daily-mission-summary {
@@ -435,7 +403,7 @@ button.secondary {
 
 .daily-mission-all-clear-reward .usb-token {
   margin-inline: -2px;
-  transform: skewX(-9deg) scale(0.9);
+  transform: scale(0.82);
 }
 
 .daily-mission-countdown {
@@ -450,7 +418,7 @@ button.secondary {
 }
 
 .daily-usb-tooltip-target::before {
-  content: "하루 최대 획득 가능한 USB는 25개입니다.";
+  content: "하루 최대 획득 가능한 USB는 11개입니다.";
   position: absolute;
   left: 50%;
   bottom: calc(100% + 12px);
@@ -843,6 +811,7 @@ button.secondary {
   font-size: 46px;
   box-shadow: 0 0 28px rgba(24,224,255,.2);
 }
+.shop-item-icon img { width: 78px; height: 78px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(24,224,255,.32)); }
 .shop-item-desc {
   min-height: 92px;
   margin: 0 0 20px;
@@ -1198,6 +1167,247 @@ button.secondary {
   gap: 12px;
   width: min(330px, 100%);
   margin-top: 32px;
+}
+
+/* Season pass */
+.season-pass-lobby-button {
+  position: fixed;
+  right: clamp(20px, 4vw, 72px);
+  bottom: clamp(20px, 5vh, 58px);
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 224px;
+  min-height: 68px;
+  padding: 10px 16px 10px 12px;
+  border: 1px solid rgba(255, 218, 115, .8);
+  border-radius: 9px;
+  background: linear-gradient(135deg, rgba(62, 35, 58, .94), rgba(13, 39, 57, .96));
+  color: #fff4c6;
+  box-shadow: 0 0 24px rgba(255, 218, 115, .16), inset 0 1px 0 rgba(255,255,255,.16);
+  text-align: left;
+}
+.season-pass-lobby-button:hover { border-color: #27ffc8; box-shadow: 0 0 26px rgba(39,255,200,.24); }
+.season-pass-lobby-button > span:nth-child(2) { display: grid; gap: 3px; }
+.season-pass-lobby-button strong { color: #ffdf70; font-size: 15px; letter-spacing: .11em; }
+.season-pass-lobby-button small { color: #d6f6f5; font-size: 13px; font-weight: 800; }
+.season-pass-lobby-button > b { margin-left: auto; color: #27ffc8; font-size: 14px; white-space: nowrap; }
+.season-pass-lobby-mark { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid #ffda73; border-radius: 50%; color: #ffda73; font-size: 22px; text-shadow: 0 0 12px #ffda73; }
+
+.season-pass-screen {
+  padding: clamp(12px, 2vw, 28px);
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(3, 12, 22, .92), rgba(11, 31, 43, .96)), radial-gradient(circle at 82% 10%, rgba(255, 218, 115, .15), transparent 34%);
+}
+.season-pass-board {
+  width: min(1480px, 100%);
+  height: min(860px, calc(100dvh - 30px));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(138, 242, 255, .52);
+  border-radius: 14px;
+  background: rgba(5, 18, 29, .97);
+  box-shadow: 0 0 0 1px #071019, 0 0 42px rgba(24, 224, 255, .14), inset 0 1px 0 rgba(255,255,255,.1);
+}
+.season-pass-header { display: grid; grid-template-columns: minmax(190px, .8fr) minmax(240px, 1fr) auto; align-items: center; gap: 24px; padding: 18px 24px; border-bottom: 1px solid rgba(138,242,255,.26); background: linear-gradient(100deg, rgba(12, 54, 68, .92), rgba(22, 25, 45, .94)); }
+.season-pass-header h2 { margin: 5px 0 0; color: #efffff; font-size: clamp(30px, 4vw, 48px); line-height: 1; letter-spacing: 2px; text-shadow: 0 0 18px rgba(24,224,255,.42); }
+.season-pass-progress-block { min-width: 0; }
+.season-pass-level-line { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; color: #bfe3ed; }
+.season-pass-level-line strong { color: #ffdf70; font-size: 25px; text-shadow: 0 0 12px rgba(255,218,115,.35); }
+.season-pass-level-line span { font-size: 13px; font-weight: 800; letter-spacing: .08em; }
+.season-pass-xp-bar { height: 12px; margin-top: 10px; overflow: hidden; border: 1px solid rgba(39,255,200,.5); border-radius: 99px; background: rgba(3,13,21,.76); }
+.season-pass-xp-bar span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ffda73, #27ffc8); box-shadow: 0 0 14px rgba(39,255,200,.45); transition: width 180ms ease; }
+.season-pass-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.season-pass-premium-button, .season-pass-claim-all { min-height: 46px; padding-inline: 15px; border: 1px solid #ffda73; border-radius: 7px; background: rgba(62, 45, 20, .82); color: #ffe899; font-weight: 900; }
+.season-pass-premium-button:hover { background: rgba(115, 78, 20, .9); }
+.season-pass-premium-button.is-owned { border-color: #27ffc8; background: rgba(12, 77, 70, .86); color: #baffef; }
+.season-pass-back { min-width: 84px; }
+.season-pass-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 22px; border-bottom: 1px solid rgba(138,242,255,.2); color: #9bbbc6; font-size: 13px; }
+.season-pass-toolbar p { margin: 0; }
+.season-pass-toolbar strong { color: #ffdf70; }
+.season-pass-claim-all { min-height: 38px; border-color: #27ffc8; background: rgba(10, 56, 61, .9); color: #dffff8; font-size: 13px; }
+.season-pass-body { min-height: 0; flex: 1; display: grid; grid-template-columns: 148px minmax(0, 1fr); }
+.season-pass-labels { display: grid; grid-template-rows: 54px 1fr 1fr; min-height: 0; border-right: 1px solid rgba(138,242,255,.35); background: #07131e; }
+.season-pass-label-spacer, .season-pass-track-label { display: flex; flex-direction: column; justify-content: center; padding: 12px; }
+.season-pass-label-spacer { color: #4e7986; font-size: 10px; font-weight: 900; letter-spacing: .16em; border-bottom: 1px solid rgba(138,242,255,.18); }
+.season-pass-track-label { gap: 6px; border-bottom: 1px solid rgba(138,242,255,.2); color: #dffcff; }
+.season-pass-track-label span { font-size: 16px; font-weight: 900; white-space: nowrap; }
+.season-pass-track-label small { color: #6fa3ad; font-size: 10px; font-weight: 900; letter-spacing: .1em; }
+.season-pass-track-label.free { box-shadow: inset 4px 0 #27ffc8; background: linear-gradient(90deg, rgba(39,255,200,.11), transparent); }
+.season-pass-track-label.premium { box-shadow: inset 4px 0 #ffda73; background: linear-gradient(90deg, rgba(255,218,115,.12), transparent); }
+.season-pass-scroller { min-width: 0; min-height: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-color: #27ffc8 rgba(3,13,21,.76); scrollbar-width: thin; }
+.season-pass-track { display: flex; align-items: stretch; min-width: max-content; height: 100%; }
+.season-pass-column { width: 132px; min-width: 132px; display: grid; grid-template-rows: 54px minmax(150px, 1fr) minmax(150px, 1fr); gap: 8px; padding: 0 7px 10px; border-right: 1px dashed rgba(138,242,255,.24); background: linear-gradient(180deg, rgba(24,224,255,.025), transparent 30%); }
+.season-pass-column.is-current { background: linear-gradient(180deg, rgba(255,218,115,.1), rgba(39,255,200,.025) 46%, transparent); }
+.season-pass-level { display: flex; align-items: center; justify-content: center; gap: 4px; color: #7fa9b4; font-size: 10px; font-weight: 900; letter-spacing: .08em; border-bottom: 1px solid rgba(138,242,255,.18); }
+.season-pass-level strong { color: #efffff; font-size: 18px; }
+.season-pass-column.is-current .season-pass-level { color: #ffdf70; }
+.season-pass-column.is-current .season-pass-level strong { color: #ffdf70; }
+.season-pass-reward { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px 6px; border: 1px solid rgba(39,255,200,.34); border-radius: 9px; background: linear-gradient(155deg, rgba(14, 59, 65, .95), rgba(7, 24, 35, .98)); color: #edffff; }
+.season-pass-reward.premium { border-color: rgba(255,218,115,.5); background: linear-gradient(155deg, rgba(65, 54, 27, .92), rgba(22, 28, 35, .98)); }
+.season-pass-reward:hover:not(:disabled) { border-color: #fff; transform: translateY(-2px); box-shadow: 0 0 18px rgba(39,255,200,.2); }
+.season-pass-reward.premium:hover:not(:disabled) { box-shadow: 0 0 18px rgba(255,218,115,.2); }
+.season-pass-reward-art { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 70px; color: #fff; font-weight: 900; }
+.season-pass-reward-art img { width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(24,224,255,.22)); }
+.season-pass-reward-art > span:not(.season-pass-usb-icon) { display: none; }
+.season-pass-reward-art strong { color: #ffdf70; font-size: 18px; }
+.season-pass-reward small { color: #bff5ed; font-size: 11px; font-weight: 900; }
+.season-pass-reward.premium small { color: #ffe7a0; }
+.season-pass-reward.is-locked { filter: saturate(.28); opacity: .62; }
+.season-pass-reward.is-claimed { border-color: rgba(138,242,255,.24); background: rgba(8, 29, 39, .72); filter: saturate(.45); }
+.season-pass-reward.is-claimed small { color: #69e8ff; }
+.season-pass-usb-icon { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 62px; height: 48px; overflow: hidden; }
+.season-pass-usb-icon img { display: block; width: 68px; height: 46px; max-width: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(24,224,255,.3)); }
+.season-pass-footnote { min-height: 20px; margin: 0; padding: 10px 18px 13px; border-top: 1px solid rgba(138,242,255,.18); color: #8daeb8; font-size: 12px; text-align: center; }
+
+@media (max-width: 900px) {
+  .lobby-screen .lobby-actions { gap: 8px; margin-top: 18px; }
+  .lobby-screen .lobby-actions .lobby-button { min-height: 44px; }
+  .season-pass-lobby-button { right: 12px; bottom: 12px; width: min(190px, calc(100vw - 24px)); min-width: 0; min-height: 54px; padding-inline: 9px; }
+  .season-pass-lobby-button strong { font-size: 12px; letter-spacing: .07em; }
+  .season-pass-lobby-button small { font-size: 11px; }
+  .season-pass-lobby-button > b { font-size: 12px; }
+  .season-pass-lobby-mark { width: 32px; height: 32px; font-size: 18px; }
+  .season-pass-header { grid-template-columns: 1fr auto; gap: 12px; }
+  .season-pass-progress-block { grid-column: 1 / -1; grid-row: 2; }
+  .season-pass-header-actions { grid-column: 2; grid-row: 1; flex-wrap: wrap; }
+  .season-pass-premium-button { max-width: 180px; font-size: 11px; }
+  .season-pass-toolbar { align-items: flex-start; flex-direction: column; }
+  .season-pass-body { grid-template-columns: 118px minmax(0, 1fr); }
+  .season-pass-labels { grid-template-rows: 50px 1fr 1fr; }
+  .season-pass-track-label span { font-size: 13px; }
+  .season-pass-column { width: 112px; min-width: 112px; grid-template-rows: 50px minmax(132px, 1fr) minmax(132px, 1fr); }
+  .season-pass-reward-art img { width: 58px; height: 58px; }
+}
+@media (max-width: 900px) and (orientation: portrait) {
+  .lobby-screen .lobby-panel { top: -140px; }
+}
+@media (max-height: 720px) {
+  .season-pass-header { padding-block: 12px; }
+  .season-pass-header h2 { font-size: 32px; }
+  .season-pass-toolbar { padding-block: 8px; }
+  .season-pass-column { grid-template-rows: 44px minmax(118px, 1fr) minmax(118px, 1fr); }
+  .season-pass-labels { grid-template-rows: 44px 1fr 1fr; }
+  .season-pass-reward-art { min-height: 56px; }
+  .season-pass-reward-art img { width: 52px; height: 52px; }
+  .season-pass-footnote { padding-block: 7px; }
+}
+
+@media (max-width: 720px) and (orientation: portrait) {
+  #dailyMissionScreen.hidden,
+  .shop-screen.hidden { display: none; }
+
+  #dailyMissionScreen {
+    display: block;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 12px;
+    touch-action: pan-y;
+  }
+
+  #dailyMissionScreen .daily-mission-board {
+    width: min(520px, 100%);
+    max-height: none;
+    margin: 0 auto;
+    padding: 16px 12px 14px;
+    overflow: visible;
+  }
+
+  #dailyMissionScreen .daily-mission-header {
+    grid-template-columns: 1fr;
+    align-items: start;
+    row-gap: 10px;
+  }
+
+  #dailyMissionScreen .daily-mission-countdown {
+    grid-column: auto;
+    justify-self: start;
+    width: auto;
+  }
+
+  #dailyMissionScreen .daily-mission-grid,
+  #dailyMissionScreen .daily-mission-summary {
+    grid-template-columns: 1fr;
+  }
+
+  #dailyMissionScreen .daily-mission-card {
+    min-height: 142px;
+  }
+
+  #dailyMissionScreen .daily-mission-summary {
+    width: 100%;
+  }
+
+  #dailyMissionScreen .daily-mission-back {
+    width: 100%;
+  }
+
+  .shop-screen {
+    display: block;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 10px;
+    touch-action: pan-y;
+  }
+
+  .shop-shell {
+    width: 100%;
+    height: auto;
+    min-height: calc(100dvh - 20px);
+    max-height: none;
+    overflow: visible;
+  }
+
+  .shop-topbar {
+    min-height: 78px;
+    padding: 12px 14px;
+  }
+
+  .shop-body {
+    display: block;
+  }
+
+  .shop-tabs {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(138, 242, 255, .3);
+  }
+
+  .shop-tab {
+    flex: 0 0 112px;
+    min-height: 62px;
+    margin: 0;
+    padding: 10px;
+  }
+
+  .shop-tab span { font-size: 16px; }
+  .shop-tab small { margin-top: 5px; font-size: 11px; }
+  .shop-tab.is-active::after { display: none; }
+  .shop-tab-space { display: none; }
+  .shop-content { overflow: visible; padding: 12px; }
+  .shop-wallet { position: static; width: fit-content; min-height: 48px; margin: 0 0 12px; padding: 8px 14px; }
+  .shop-wallet strong { font-size: 26px; }
+  .shop-panel-heading { margin-bottom: 14px; padding-bottom: 10px; }
+  .shop-panel-heading > div,
+  .shop-panel-heading > p { max-width: none; }
+  .shop-panel-heading > div { flex-wrap: wrap; gap: 7px 12px; }
+  .shop-panel-heading h3 { font-size: 22px; }
+  .shop-panel-heading p { font-size: 12px; }
+  .shop-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .shop-product { min-height: 0; padding: 12px 10px; }
+  .shop-product h4 { font-size: 14px; }
+  .shop-item-icon { width: 62px; height: 62px; margin: 14px auto; }
+  .shop-item-icon img { width: 52px; height: 52px; }
+  .shop-item-desc { min-height: 72px; margin-bottom: 10px; font-size: 12px; line-height: 1.4; }
+  .shop-item-owned { min-height: 32px; margin-bottom: 10px; font-size: 14px; }
+  .shop-product button { min-height: 40px; font-size: 13px; }
+  .usb-pack .storage-art { height: 64px; margin: 14px auto; transform: scale(.72); }
 }
 
 .lobby-button {
@@ -3767,6 +3977,8 @@ kbd {
   min-height: 54px;
   padding-right: 34px;
   text-align: left;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .dialogue-skip-btn {
@@ -4004,6 +4216,11 @@ kbd {
   color: #18e0ff;
   font-size: 17px;
 }
+
+body.lobby-active.lobby-ready.lobby-feature-active .topbar {
+  display: none;
+}
+.failure-item-icon img { width: 25px; height: 25px; object-fit: contain; }
 
 .failure-item-button strong,
 .failure-item-button small {
@@ -4576,8 +4793,9 @@ kbd {
 
   .dialogue-overlay .overlay-card {
     width: 100%;
-    height: 104px;
+    height: auto;
     min-height: 104px;
+    overflow: visible;
     padding: 10px 12px 14px;
   }
 
@@ -5004,8 +5222,9 @@ kbd {
   }
 
   .dialogue-overlay .overlay-card {
-    height: 92px;
+    height: auto;
     min-height: 92px;
+    overflow: visible;
     padding: 9px 11px 13px;
   }
 
@@ -5540,8 +5759,9 @@ body.mobile-client .overlay.reward-select-overlay .reward-actions > button {
 
 body.mobile-client .dialogue-overlay .overlay-card {
   width: min(900px, calc(100% - 16px));
-  height: 92px;
+  height: auto;
   min-height: 92px;
+  overflow: visible;
   padding: 9px 11px 13px;
 }
 
@@ -5867,4 +6087,45 @@ body.mobile-client.mobile-portrait .lobby-root {
     width: min(300px, calc(100vw - 16px));
     right: -4px;
   }
+}
+
+/* General store rotation: six fixed slots with a deliberate horizontal scroll. */
+.shop-item-grid {
+  grid-template-columns: repeat(6, minmax(220px, 1fr));
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 10px;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-color: rgba(39, 255, 200, .72) rgba(3, 18, 28, .8);
+}
+
+.shop-item-grid .shop-product {
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.shop-product-free {
+  border-color: rgba(39, 255, 200, .72);
+  box-shadow: inset 0 0 32px rgba(39, 255, 200, .08), 0 0 18px rgba(39, 255, 200, .08);
+}
+
+.shop-product-discount {
+  border-color: rgba(255, 209, 102, .72);
+  box-shadow: inset 0 0 32px rgba(255, 209, 102, .08), 0 0 18px rgba(255, 209, 102, .08);
+}
+
+.shop-product-free .shop-product-tag { color: #27ffc8; }
+.shop-product-discount .shop-product-tag { color: #ffd166; }
+.shop-price-discount { gap: 6px; }
+.shop-price-discount s { color: #9caeb4; font-size: .78em; text-decoration-thickness: 2px; }
+.shop-price-discount strong { color: #edfffb; font-size: 1.05em; }
+
+@media (max-width: 900px) {
+  .shop-item-grid { grid-template-columns: repeat(6, minmax(170px, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .shop-item-grid { grid-template-columns: repeat(6, minmax(156px, 1fr)); }
 }
