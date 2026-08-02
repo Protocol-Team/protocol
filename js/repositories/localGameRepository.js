@@ -1,6 +1,7 @@
 const BEST_STAGE_STORAGE_KEY = "traceProtocolBest";
 const PURCHASED_AI_SKINS_STORAGE_KEY = "traceProtocolPurchasedAiSkins";
 const SELECTED_AI_SKIN_STORAGE_KEY = "traceProtocolAiPortraitSkin";
+const SELECTED_HACKER_SKIN_STORAGE_KEY = "traceProtocolHackerPortraitSkin";
 
 const DEFAULT_BEST_STAGE = 0;
 const DEFAULT_PURCHASED_SKINS = [];
@@ -71,6 +72,18 @@ export function getSelectedSkin() {
 export function saveSelectedSkin(skinId) {
   writeStorageValue(
     SELECTED_AI_SKIN_STORAGE_KEY,
+    typeof skinId === "string" && skinId.length > 0 ? skinId : DEFAULT_SELECTED_SKIN
+  );
+}
+
+export function getSelectedHackerSkin() {
+  const selectedSkin = readStorageValue(SELECTED_HACKER_SKIN_STORAGE_KEY);
+  return selectedSkin || DEFAULT_SELECTED_SKIN;
+}
+
+export function saveSelectedHackerSkin(skinId) {
+  writeStorageValue(
+    SELECTED_HACKER_SKIN_STORAGE_KEY,
     typeof skinId === "string" && skinId.length > 0 ? skinId : DEFAULT_SELECTED_SKIN
   );
 }
