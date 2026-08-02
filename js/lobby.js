@@ -17,13 +17,26 @@ import {
   recordDailyMissionEvent,
   spendDailyMissionUsb,
   addDailyMissionUsb,
-} from "./repositories/dailyMissionRepository.js?v=20260730-shop-v1";
+} from "./repositories/dailyMissionRepository.js?v=20260803-currency-v1";
 import {
   SHOP_ITEMS,
+  USB_UNIT_KRW,
+  getDailyShopOffers,
   getShopState,
+  purchaseShopOffer,
   purchaseShopItem,
   recordUsbPackPurchase,
 } from "./repositories/shopRepository.js";
+import {
+  SEASON_PASS_MAX_LEVEL,
+  SEASON_PASS_XP_PER_LEVEL,
+  SEASON_PASS_REWARDS,
+  claimAllSeasonPassRewards,
+  claimSeasonPassReward,
+  getSeasonPassState,
+  initSeasonPass,
+  unlockSeasonPassPremium,
+} from "./repositories/seasonPassRepository.js";
 
 const CLASSIC_CLEAR_STORAGE_KEY = "traceProtocolClassicStage11Returned";
 const PROFILE_STORAGE_KEY = "traceProtocolProfileSettings";
@@ -75,8 +88,10 @@ export function initLobby({
   const pathNoteBtn = document.getElementById("lobbyPathNoteBtn");
   const missionBtn = document.getElementById("lobbyMissionBtn");
   const shopBtn = document.getElementById("lobbyShopBtn");
+  const seasonPassBtn = document.getElementById("lobbySeasonPassBtn");
   const dailyMissionScreen = document.getElementById("dailyMissionScreen");
   const shopScreen = document.getElementById("shopScreen");
+  const seasonPassScreen = document.getElementById("seasonPassScreen");
   const skinPanel = createSkinPanel();
   const skinPurchaseModal = createSkinPurchaseModal();
   const pathNoteModal = createPathNoteModal();
@@ -91,6 +106,15 @@ export function initLobby({
   const shopItemGrid = document.getElementById("shopItemGrid");
   const shopStatus = document.getElementById("shopStatus");
   const dailyUsbHistoryList = document.getElementById("dailyUsbHistoryList");
+  const seasonPassTrack = document.getElementById("seasonPassTrack");
+  const seasonPassScroller = document.getElementById("seasonPassScroller");
+  const seasonPassLevel = document.getElementById("seasonPassLevel");
+  const seasonPassLobbyLevel = document.getElementById("seasonPassLobbyLevel");
+  const seasonPassXpLabel = document.getElementById("seasonPassXpLabel");
+  const seasonPassXpBar = document.getElementById("seasonPassXpBar");
+  const seasonPassPremiumBtn = document.getElementById("seasonPassPremiumBtn");
+  const seasonPassClaimAllBtn = document.getElementById("seasonPassClaimAllBtn");
+  const seasonPassStatus = document.getElementById("seasonPassStatus");
   const profileBtn = document.getElementById("profileBtn");
   const profilePanel = document.getElementById("profilePanel");
   const profileAvatar = document.getElementById("profileAvatar");
@@ -123,6 +147,8 @@ export function initLobby({
   let authSession = null;
   let authLoading = true;
   let authError = "";
+
+  initSeasonPass();
 
   document.body.classList.add("lobby-active");
   startBtn?.after(modePanel);
@@ -198,6 +224,78 @@ export function initLobby({
   window.setInterval(updateDailyMissionCountdown, 1000);
   window.addEventListener("protocol:daily-mission-update", (event) => refreshDailyMission(event.detail));
 
+  const renderSeasonPassReward = (reward) => {
+    if (reward.type === "item") {
+      return `<img src="${reward.icon}" alt=""><span>${reward.name}</span>`;
+    }
+    return `<span class="season-pass-usb-icon" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span><strong>×${reward.amount}</strong>`;
+  };
+
+  const renderSeasonPass = (state = getSeasonPassState()) => {
+    const level = Math.max(1, Number(state.level) || 1);
+    const xp = level >= SEASON_PASS_MAX_LEVEL ? SEASON_PASS_XP_PER_LEVEL : Math.max(0, Number(state.xp) || 0);
+    const progress = level >= SEASON_PASS_MAX_LEVEL ? 100 : (xp / SEASON_PASS_XP_PER_LEVEL) * 100;
+    if (seasonPassLevel) seasonPassLevel.textContent = `LV. ${level}`;
+    if (seasonPassLobbyLevel) seasonPassLobbyLevel.textContent = `LV. ${level}`;
+    if (seasonPassXpLabel) seasonPassXpLabel.textContent = level >= SEASON_PASS_MAX_LEVEL ? "MAX LEVEL" : `${xp} / ${SEASON_PASS_XP_PER_LEVEL} XP`;
+    if (seasonPassXpBar) seasonPassXpBar.style.width = `${progress}%`;
+    if (seasonPassPremiumBtn) {
+      seasonPassPremiumBtn.textContent = state.premiumUnlocked ? "PREMIUM PASS · 활성화" : "프리미엄 패스 구매 · KRW 9,900";
+      seasonPassPremiumBtn.classList.toggle("is-owned", state.premiumUnlocked);
+    }
+    if (!seasonPassTrack) return;
+    seasonPassTrack.innerHTML = SEASON_PASS_REWARDS.map(({ level: rewardLevel, free, premium }) => {
+      const freeClaimed = Boolean(state.claimed?.[`free-${rewardLevel}`]);
+      const premiumClaimed = Boolean(state.claimed?.[`premium-${rewardLevel}`]);
+      const freeLocked = rewardLevel > level;
+      const premiumLocked = freeLocked || !state.premiumUnlocked;
+      return `
+        <article class="season-pass-column${rewardLevel === level ? " is-current" : ""}">
+          <div class="season-pass-level">LEVEL <strong>${rewardLevel}</strong></div>
+          <button class="season-pass-reward free${freeClaimed ? " is-claimed" : ""}${freeLocked ? " is-locked" : ""}" type="button" data-season-pass-claim="free" data-season-pass-level="${rewardLevel}" ${freeClaimed || freeLocked ? "disabled" : ""}>
+            <span class="season-pass-reward-art">${renderSeasonPassReward(free)}</span><small>${freeClaimed ? "수령 완료" : freeLocked ? "잠김" : "수령"}</small>
+          </button>
+          <button class="season-pass-reward premium${premiumClaimed ? " is-claimed" : ""}${premiumLocked ? " is-locked" : ""}" type="button" data-season-pass-claim="premium" data-season-pass-level="${rewardLevel}" ${premiumClaimed || premiumLocked ? "disabled" : ""}>
+            <span class="season-pass-reward-art">${renderSeasonPassReward(premium)}</span><small>${premiumClaimed ? "수령 완료" : !state.premiumUnlocked ? "프리미엄 필요" : freeLocked ? "잠김" : "수령"}</small>
+          </button>
+        </article>`;
+    }).join("");
+  };
+
+  renderSeasonPass();
+  window.addEventListener("protocol:season-pass-update", (event) => renderSeasonPass(event.detail));
+
+  seasonPassScroller?.addEventListener("wheel", (event) => {
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+    event.preventDefault();
+    seasonPassScroller.scrollLeft += event.deltaY;
+  }, { passive: false });
+
+  seasonPassScreen?.addEventListener("click", (event) => {
+    const rewardButton = event.target?.closest?.("[data-season-pass-claim]");
+    if (rewardButton) {
+      const result = claimSeasonPassReward(rewardButton.dataset.seasonPassLevel, rewardButton.dataset.seasonPassClaim);
+      if (seasonPassStatus) seasonPassStatus.textContent = result.ok
+        ? `${result.reward.name}${result.reward.type === "usb" ? ` ${result.reward.amount}개` : ""} 보상을 획득했습니다.`
+        : result.reason === "premium" ? "프리미엄 패스를 구매하면 보상을 받을 수 있습니다." : "아직 받을 수 없는 보상입니다.";
+      if (result.ok) playSfx("click");
+      return;
+    }
+    if (event.target?.closest?.("#seasonPassPremiumBtn")) {
+      const state = unlockSeasonPassPremium();
+      if (seasonPassStatus) seasonPassStatus.textContent = "프리미엄 패스가 활성화되었습니다. 이제 아래 트랙의 보상을 수령할 수 있습니다.";
+      if (state) playSfx("click");
+      return;
+    }
+    if (event.target?.closest?.("#seasonPassClaimAllBtn")) {
+      const result = claimAllSeasonPassRewards();
+      if (seasonPassStatus) seasonPassStatus.textContent = result.claimed.length
+        ? `${result.claimed.length}개의 시즌패스 보상을 한 번에 수령했습니다.`
+        : "지금 수령할 수 있는 보상이 없습니다.";
+      if (result.claimed.length) playSfx("click");
+    }
+  });
+
   const setShopStatus = (message = "") => {
     if (shopStatus) shopStatus.textContent = message;
   };
@@ -205,25 +303,54 @@ export function initLobby({
   const renderShopItems = () => {
     if (!shopItemGrid) return;
     const state = getShopState();
-    shopItemGrid.innerHTML = SHOP_ITEMS.map((item) => {
-      const claimed = item.freeOnce && state.claimedOffers[item.id];
-      const price = item.price
-        ? `<span class="shop-price-usb"><span class="usb-token" aria-hidden="true"><i></i><b>USB</b></span>${item.price}</span>`
-        : "무료 획득";
+    const dailyOffers = getDailyShopOffers();
+    const itemById = new Map(SHOP_ITEMS.map((item) => [item.id, item]));
+    const offers = [
+      { type: "free", item: itemById.get(dailyOffers.freeItemId), tag: "DAILY FREE" },
+      { type: "discount", item: itemById.get(dailyOffers.discountItemId), tag: `TODAY -${dailyOffers.discountPercent}%` },
+      ...SHOP_ITEMS.map((item) => ({ type: "standard", item, tag: "FULL PRICE" })),
+    ].filter(({ item }) => item);
+    shopItemGrid.innerHTML = offers.map(({ type, item, tag }) => {
+      const isFree = type === "free";
+      const isDiscount = type === "discount";
+      const claimed = isFree ? dailyOffers.freeClaimed : isDiscount ? dailyOffers.discountClaimed : false;
+      const discountedPrice = isDiscount
+        ? Math.max(1, Math.round(item.price * (100 - dailyOffers.discountPercent) / 100))
+        : item.price;
+      const price = isFree
+        ? "무료 획득"
+        : isDiscount
+          ? `<span class="shop-price-usb shop-price-discount" title="정가 ${item.price} USB · ${dailyOffers.discountPercent}% 할인"><span class="usb-token" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span><s>${item.price}</s><strong>${discountedPrice}</strong></span>`
+          : `<span class="shop-price-usb" title="약 ${item.price * USB_UNIT_KRW}원 가치"><span class="usb-token" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span>${item.price}</span>`;
+      const offerAttributes = isFree || isDiscount
+        ? `data-shop-offer="${type}" data-offer-item="${item.id}"`
+        : `data-buy-item="${item.id}"`;
+      const description = isFree
+        ? "매일 1회, 오늘의 랜덤 아이템을 무료로 획득합니다."
+        : isDiscount
+          ? `오늘의 랜덤 아이템을 ${dailyOffers.discountPercent}% 할인된 가격에 구매합니다.`
+          : item.desc;
       return `
-        <article class="shop-product">
-          <span class="shop-product-tag">${item.freeOnce ? "WELCOME OFFER" : "CONSUMABLE"}</span>
+        <article class="shop-product shop-product-${type}">
+          <span class="shop-product-tag">${tag}</span>
           <h4>${item.name}</h4>
-          <div class="shop-item-icon" aria-hidden="true">${item.icon}</div>
-          <p class="shop-item-desc">${item.desc}</p>
+          <div class="shop-item-icon" aria-hidden="true"><img src="${item.icon}" alt=""></div>
+          <p class="shop-item-desc">${description}</p>
           <span class="shop-item-owned">보유 : ${Math.max(0, Number(state.inventory[item.id]) || 0)}개</span>
-          <button type="button" data-buy-item="${item.id}" ${claimed ? "disabled" : ""}>${claimed ? "획득 완료" : price}</button>
+          <button type="button" ${offerAttributes} ${claimed ? "disabled" : ""}>${claimed ? "오늘 획득 완료" : price}</button>
         </article>`;
     }).join("");
   };
 
   renderShopItems();
   window.addEventListener("protocol:shop-update", renderShopItems);
+
+  shopScreen?.addEventListener("wheel", (event) => {
+    const grid = event.target?.closest?.("#shopItemGrid");
+    if (!grid || Math.abs(event.deltaY) <= Math.abs(event.deltaX) || grid.scrollWidth <= grid.clientWidth) return;
+    event.preventDefault();
+    grid.scrollLeft += event.deltaY;
+  }, { passive: false, capture: true });
 
   shopScreen?.addEventListener("click", (event) => {
     const tab = event.target?.closest?.("[data-shop-tab]");
@@ -239,6 +366,18 @@ export function initLobby({
       });
       setShopStatus();
       playSfx("click");
+      return;
+    }
+
+    const offerButton = event.target?.closest?.("[data-shop-offer]");
+    if (offerButton) {
+      const offerType = offerButton.dataset.shopOffer;
+      const result = purchaseShopOffer(offerType, offerButton.dataset.offerItem, spendDailyMissionUsb);
+      setShopStatus(result.ok
+        ? offerType === "free" ? "오늘의 무료 아이템을 획득했습니다." : "오늘의 할인 아이템을 구매했습니다."
+        : result.reason === "balance" ? "USB가 부족합니다." : "오늘의 상품은 이미 획득했습니다.");
+      refreshDailyMission();
+      if (result.ok) playSfx("click");
       return;
     }
 
@@ -476,6 +615,8 @@ export function initLobby({
     setProfilePanelOpen(false);
     dailyMissionScreen?.classList.toggle("hidden", screen !== dailyMissionScreen);
     shopScreen?.classList.toggle("hidden", screen !== shopScreen);
+    seasonPassScreen?.classList.toggle("hidden", screen !== seasonPassScreen);
+    document.body.classList.toggle("lobby-feature-active", Boolean(screen));
     lobbyScreen?.classList.toggle("hidden", Boolean(screen));
   };
 
@@ -1037,7 +1178,16 @@ export function initLobby({
     showFeatureScreen(shopScreen);
   });
 
-  for (const screen of [dailyMissionScreen, shopScreen]) {
+  seasonPassBtn?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    startLobbyBgm();
+    closeLobbyPopups();
+    renderSeasonPass();
+    showFeatureScreen(seasonPassScreen);
+  });
+
+  for (const screen of [dailyMissionScreen, shopScreen, seasonPassScreen]) {
     screen?.addEventListener("click", (event) => {
       if (!event.target?.closest?.("[data-action='back-to-lobby']")) return;
       event.preventDefault();

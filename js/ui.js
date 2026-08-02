@@ -625,10 +625,10 @@ export function initUI(callbacks) {
       tabs.innerHTML = `<div class="failure-item-tab-title">ITEMS · 실패 직전 사용 가능</div><div class="failure-item-grid"></div>`;
       const grid = tabs.querySelector(".failure-item-grid");
       const itemDefinitions = [
-        ["attackTime", "⏱", "공격 시간 +5초", "현재 공격 턴의 제한 시간이 5초 늘어납니다.", "attack"],
-        ["energyMax", "⚡", "에너지 최대치 +20", "최대 에너지를 20 늘리고 즉시 충전합니다.", "attack"],
-        ["shieldModule", "◇", "실드모듈", "해킹 중 무적 시간이 0.5초 늘어납니다.", "attack"],
-        ["revive", "✚", "부활", "DARK WEB 추가 목숨을 모두 소진한 뒤 1회 부활합니다.", "any"],
+        ["attackTime", "./assets/images/items/attack-watch.svg", "공격 시간 +5초", "현재 공격 턴의 제한 시간이 5초 늘어납니다.", "attack"],
+        ["energyMax", "./assets/images/items/energy-battery.svg", "에너지 최대치 +20", "최대 에너지를 20 늘리고 즉시 충전합니다.", "attack"],
+        ["shieldModule", "./assets/images/items/shield-module.svg", "실드모듈", "해킹 중 무적 시간이 0.5초 늘어납니다.", "attack"],
+        ["revive", "./assets/images/items/revive-cross.svg", "부활", "DARK WEB 추가 목숨을 모두 소진한 뒤 1회 부활합니다.", "any"],
         ["replay", "↻", "해커턴 재생", "수비 리플레이를 한 번 더 시도합니다.", "defense"],
       ];
       for (const [id, icon, name, desc, turnType] of itemDefinitions) {
@@ -637,7 +637,8 @@ export function initUI(callbacks) {
         button.className = "failure-item-button";
         button.dataset.item = id;
         button.dataset.itemTurn = turnType;
-        button.innerHTML = `<span class="failure-item-icon">${icon}</span><span><strong>${name}</strong><small>${desc}</small></span>`;
+        const iconMarkup = icon.endsWith(".svg") ? `<img src="${icon}" alt="">` : icon;
+        button.innerHTML = `<span class="failure-item-icon">${iconMarkup}</span><span><strong>${name}</strong><small>${desc}</small></span>`;
         button.title = desc;
         button.addEventListener("click", (event) => {
           event.preventDefault();
@@ -2339,11 +2340,19 @@ export function initUI(callbacks) {
     const lines = [];
     for (const paragraph of String(text).split("\n")) {
       let line = "";
+      let lastBreak = -1;
       for (const char of paragraph) {
         const nextLine = `${line}${char}`;
+        if (/\s|[,.!?;:，。！？、…)]/.test(char)) lastBreak = nextLine.length;
         if (line && ctx.measureText(nextLine).width > maxWidth) {
-          lines.push(line);
-          line = char;
+          if (lastBreak > 0 && lastBreak < nextLine.length) {
+            lines.push(line.slice(0, lastBreak).trimEnd());
+            line = line.slice(lastBreak).trimStart() + char;
+          } else {
+            lines.push(line);
+            line = char;
+          }
+          lastBreak = -1;
         } else {
           line = nextLine;
         }

@@ -1,13 +1,13 @@
 const STORAGE_KEY = "traceProtocolDailyMissions";
-const SCHEMA_VERSION = 9;
-const ALL_DAILY_REWARD = 5;
+const SCHEMA_VERSION = 10;
+const ALL_DAILY_REWARD = 2;
 const MISSIONS = [
-  { id: "attendance", reward: 2, target: 1 },
-  { id: "shopVisit", reward: 2, target: 1 },
-  { id: "classicPlay", reward: 3, target: 1 },
-  { id: "hackerAiClear", reward: 4, target: 6 },
-  { id: "dailyFourClear", reward: 4, target: 4 },
-  { id: "darkWebCore", reward: 5, target: 1 },
+  { id: "attendance", reward: 1, target: 1 },
+  { id: "shopVisit", reward: 1, target: 1 },
+  { id: "classicPlay", reward: 1, target: 1 },
+  { id: "hackerAiClear", reward: 2, target: 6 },
+  { id: "dailyFourClear", reward: 2, target: 4 },
+  { id: "darkWebCore", reward: 2, target: 1 },
 ];
 const DAILY_FOUR_CLEAR_IDS = ["attendance", "shopVisit", "classicPlay", "hackerAiClear", "darkWebCore"];
 
@@ -47,6 +47,12 @@ function writeState(state) {
   }
 }
 
+function dispatchSeasonPassXp(missionId) {
+  window.dispatchEvent(new CustomEvent("protocol:daily-mission-completed", {
+    detail: { missionId, xp: 5 },
+  }));
+}
+
 function calculateClaimedReward(claimed = {}) {
   const missionReward = MISSIONS.reduce(
     (total, mission) => total + (claimed[mission.id] ? mission.reward : 0),
@@ -60,6 +66,7 @@ export function getDailyMissionState(now = new Date()) {
   const today = dateKey(now);
   if (stored?.dateKey === today && stored.schemaVersion !== SCHEMA_VERSION) {
     const previousTodayUsb = Math.max(0, Number(stored.todayUsb) || 0);
+    const previousWalletUsb = Math.max(0, Number(stored.walletUsb ?? stored.totalUsb) || 0);
     const migrated = emptyState(today, stored.totalUsb, stored.history);
     for (const { id } of MISSIONS) {
       if ((Number(stored.schemaVersion) || 0) < 8 && (id === "shopVisit" || id === "dailyFourClear")) continue;
@@ -77,6 +84,7 @@ export function getDailyMissionState(now = new Date()) {
       0,
       (Number(stored.totalUsb) || 0) + migrated.todayUsb - previousTodayUsb
     );
+    migrated.walletUsb = Math.max(0, previousWalletUsb + migrated.todayUsb - previousTodayUsb);
     migrated.history = { ...stored.history, [today]: migrated.todayUsb };
     stored = migrated;
     writeState(stored);
@@ -109,6 +117,7 @@ export function recordDailyMissionEvent(type, amount = 1, now = new Date()) {
     state.todayUsb += mission.reward;
     state.totalUsb += mission.reward;
     state.walletUsb += mission.reward;
+    dispatchSeasonPassXp(type);
   }
   const completedCount = DAILY_FOUR_CLEAR_IDS.filter((id) => state.claimed[id]).length;
   state.progress.dailyFourClear = Math.min(4, completedCount);
@@ -118,12 +127,14 @@ export function recordDailyMissionEvent(type, amount = 1, now = new Date()) {
     state.todayUsb += dailyFourMission.reward;
     state.totalUsb += dailyFourMission.reward;
     state.walletUsb += dailyFourMission.reward;
+    dispatchSeasonPassXp("dailyFourClear");
   }
   if (MISSIONS.every(({ id }) => state.claimed[id]) && !state.claimed.allDaily) {
     state.claimed.allDaily = true;
     state.todayUsb += ALL_DAILY_REWARD;
     state.totalUsb += ALL_DAILY_REWARD;
     state.walletUsb += ALL_DAILY_REWARD;
+    dispatchSeasonPassXp("allDaily");
   }
   state.history = { ...state.history, [state.dateKey]: state.todayUsb };
   writeState(state);
