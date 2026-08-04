@@ -425,6 +425,7 @@ export function initUI(callbacks) {
     guideBubbleSkipToggle: document.getElementById("guideBubbleSkipToggle"),
     helpBtn: document.getElementById("helpBtn"),
     lobbyBtn: document.getElementById("lobbyBtn"),
+    lobbyExitBtn: document.getElementById("lobbyExitBtn"),
   };
   prepareStatusBar(ui);
   prepareAttackSkillPanel(ui, canvas);
@@ -3565,6 +3566,12 @@ export function initUI(callbacks) {
     }, true);
 
     window.addEventListener("keydown", (event) => {
+      const target = event.target;
+      if (target instanceof HTMLElement
+        && (target.matches("input, textarea, select") || target.isContentEditable)) {
+        return;
+      }
+
       if (event.repeat && !keys.has(event.code)) {
         if (attackResumeKeys.has(event.code) || event.code === "Escape") {
           event.preventDefault();
@@ -3769,6 +3776,13 @@ export function initUI(callbacks) {
       }
       if (callbacks.onReturnToLobby?.()) return;
       setLog("로비 기능은 추후 추가 예정입니다.");
+    });
+
+    ui.lobbyExitBtn?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setSettingsPanelOpen(false);
+      callbacks.onExitGame?.();
     });
 
     for (const btn of document.querySelectorAll(".trap-btn")) {

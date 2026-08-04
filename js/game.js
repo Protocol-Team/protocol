@@ -29,7 +29,7 @@ import {
 } from "./trap.js?v=20260729-camera-triangle-tutorial-v2";
 import { startReplay as startReplayMode, updateDefenseReplay } from "./replay.js?v=20260724-stage-effect-cleanup";
 import { playBgm, playLobbyBgm, playSfx, stopAllSfx, stopBgm, stopSfx } from "./audio.js?v=20260724-stage-effect-cleanup";
-import { initLobby } from "./lobby.js?v=20260803-shop-rotation-v3";
+import { initLobby } from "./lobby.js?v=20260804-darkweb-route-v1";
 import {
   recordDailyMissionEvent,
   recordStageClearForDailyMissions,
@@ -1528,11 +1528,12 @@ function showDeepTraceRoute() {
     onComplete: () => {
       uiModule.showOverlay({
         title: "TRACE DEEPER",
-        text: "중앙 코어 아래, AI조차 접근할 수 없는 기록 계층이 열렸다.\n클래식 모드의 기록을 저장하고 로비에서 DARK WEB MODE를 선택할 수 있습니다.",
-        buttonText: "로비로 이동",
+        text: "중앙 코어 아래, AI조차 접근할 수 없는 기록 계층이 열렸다.\n클래식 모드의 기록을 저장하고 DARK WEB MODE의 메인 코어 추적을 시작합니다.",
+        buttonText: "메인 코어 룸으로 진입",
         onButton: () => {
           markClassicStage11Clear();
-          returnToLobby();
+          resetRunState({ mode: "darkweb" });
+          startDarkWebMission();
         },
       });
     },
@@ -1675,6 +1676,7 @@ function maybeShowStageTutorial({ keepDefenseTraps = false } = {}) {
     !game.tutorialFlags.stage2Defense
   ) {
     game.tutorialFlags.stage2Defense = true;
+    uiModule.closeDefenseGuidePanels?.();
     showDialogueSequence("AI 시스템", STAGE_TWO_DEFENSE_DIALOGUE, {
       finalButtonText: "방어 준비",
       keepCurrentBgm: true,

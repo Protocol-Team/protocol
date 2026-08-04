@@ -96,6 +96,7 @@
             <span>종료까지</span>
             <strong id="dailyMissionCountdown">00시간 00분 00초</strong>
           </div>
+          <button class="lobby-button daily-mission-back" type="button" data-action="back-to-lobby">BACK</button>
         </header>
 
         <div class="daily-mission-grid">
@@ -150,7 +151,6 @@
           </div>
         </div>
 
-        <button class="lobby-button daily-mission-back" type="button" data-action="back-to-lobby">BACK</button>
       </div>
     </section>
 
@@ -237,6 +237,7 @@
                 </label>
                 <button id="helpBtn" class="secondary" type="button">도움말</button>
                 <button id="lobbyBtn" class="secondary" type="button">로비로 이동</button>
+                <button id="lobbyExitBtn" class="secondary lobby-exit-button" type="button">게임 종료</button>
               </div>
             </div>
           </div>
@@ -323,7 +324,7 @@
       }
     }
 
-    await import("./js/game.js?v=20260803-shop-rotation-v3");
+    await import("./js/game.js?v=20260804-darkweb-route-v1");
   </script>
 </body>
 </html>

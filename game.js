@@ -1233,6 +1233,12 @@
     createRotationControl();
 
     window.addEventListener("keydown", (event) => {
+      const target = event.target;
+      if (target instanceof HTMLElement
+        && (target.matches("input, textarea, select") || target.isContentEditable)) {
+        return;
+      }
+
       if (event.code === "KeyE" && !event.repeat) {
         activateShield();
       }
