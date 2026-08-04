@@ -161,8 +161,8 @@ button.secondary {
 
 .daily-mission-header {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
   column-gap: clamp(24px, 2vw, 32px);
   margin-bottom: 22px;
   padding-bottom: 16px;
@@ -344,14 +344,19 @@ button.secondary {
 }
 
 .daily-mission-back {
-  display: block;
-  width: min(390px, 100%);
-  margin: 0 auto;
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  min-width: 110px;
+  margin: 0;
 }
 
 .daily-mission-all-clear {
+  grid-column: 1 / -1;
+  grid-row: 2;
   min-width: 0;
   align-self: center;
+  justify-self: center;
 }
 
 .daily-mission-all-clear-message {
@@ -407,7 +412,10 @@ button.secondary {
 }
 
 .daily-mission-countdown {
-  grid-column: 3;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  text-align: center;
 }
 
 .daily-usb-tooltip-target {
@@ -940,12 +948,14 @@ button.secondary {
 }
 
 .daily-mission-stage-link:not(.is-complete),
-.daily-mission-shop-link:not(.is-complete) {
+.daily-mission-shop-link:not(.is-complete),
+.daily-mission-darkweb-link:not(.is-complete) {
   cursor: pointer;
 }
 
 .daily-mission-stage-link:focus-visible,
-.daily-mission-shop-link:focus-visible {
+.daily-mission-shop-link:focus-visible,
+.daily-mission-darkweb-link:focus-visible {
   outline: 2px solid #ffe45c;
   outline-offset: 3px;
 }
@@ -1015,7 +1025,7 @@ button.secondary {
 
   #dailyMissionScreen .daily-mission-board {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     width: min(1120px, 100%);
     height: calc(100dvh - 24px);
     max-height: none;
@@ -1063,22 +1073,15 @@ button.secondary {
     padding-block: 6px;
   }
 
-  #dailyMissionScreen .daily-mission-back {
-    min-height: 0;
-    padding-block: clamp(7px, 1.3vh, 10px);
-  }
+  #dailyMissionScreen .daily-mission-back { min-height: 52px; }
 }
 
 @media (min-width: 1200px) {
   #dailyMissionScreen .daily-mission-header {
     position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
   }
 
   #dailyMissionScreen .daily-mission-header > div:first-child {
-    flex: 0 0 230px;
     min-width: 230px;
   }
 
@@ -1087,14 +1090,13 @@ button.secondary {
   }
 
   #dailyMissionScreen .daily-mission-all-clear {
-    position: absolute;
-    left: 50%;
-    width: min(730px, calc(100% - 500px));
-    transform: translateX(-50%);
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: min(730px, 100%);
+    margin: 10px auto 0;
   }
 
   #dailyMissionScreen .daily-mission-countdown {
-    flex: 0 0 235px;
     width: 235px;
   }
 }
@@ -1316,15 +1318,30 @@ button.secondary {
   }
 
   #dailyMissionScreen .daily-mission-header {
+    position: relative;
     grid-template-columns: 1fr;
     align-items: start;
     row-gap: 10px;
   }
 
+  #dailyMissionScreen .daily-mission-header > div:first-child {
+    padding-right: 92px;
+  }
+
   #dailyMissionScreen .daily-mission-countdown {
     grid-column: auto;
-    justify-self: start;
+    grid-row: auto;
+    justify-self: center;
+    width: 100%;
+    margin: 0;
+  }
+
+  #dailyMissionScreen .daily-mission-back {
+    position: absolute;
+    top: 0;
+    right: 0;
     width: auto;
+    min-width: 82px;
   }
 
   #dailyMissionScreen .daily-mission-grid,
@@ -1337,10 +1354,6 @@ button.secondary {
   }
 
   #dailyMissionScreen .daily-mission-summary {
-    width: 100%;
-  }
-
-  #dailyMissionScreen .daily-mission-back {
     width: 100%;
   }
 
@@ -2070,6 +2083,24 @@ body.lobby-active .topbar {
   text-align: left;
 }
 
+body.lobby-active:not(.mobile-client) .profile-trigger,
+body.lobby-active:not(.mobile-client) .settings-toggle {
+  height: 42px;
+  min-height: 42px;
+}
+
+body.lobby-active:not(.mobile-client) .profile-trigger {
+  min-width: 220px;
+  padding: 4px 12px 4px 6px;
+}
+
+body.lobby-active:not(.mobile-client) .profile-avatar,
+body.lobby-active:not(.mobile-client) .profile-avatar-fallback {
+  flex-basis: 32px;
+  width: 32px;
+  height: 32px;
+}
+
 .profile-trigger:hover,
 .profile-trigger[aria-expanded="true"] {
   border-color: rgba(24, 224, 255, 0.8);
@@ -2471,6 +2502,25 @@ body.darkweb-active #restartBtn {
 
 .settings-panel button {
   width: 100%;
+}
+
+.lobby-exit-button {
+  display: none;
+}
+
+body.lobby-active .settings-panel .lobby-exit-button {
+  display: block;
+  border-color: rgba(255, 78, 94, 0.82);
+  background: linear-gradient(180deg, rgba(112, 24, 36, 0.96), rgba(67, 15, 25, 0.98));
+  color: #fff1f3;
+  box-shadow: inset 0 1px 0 rgba(255, 214, 219, 0.12), 0 0 14px rgba(255, 55, 76, 0.16);
+}
+
+body.lobby-active .settings-panel .lobby-exit-button:hover,
+body.lobby-active .settings-panel .lobby-exit-button:focus-visible {
+  border-color: #ff4e5e;
+  background: linear-gradient(180deg, rgba(145, 29, 44, 0.98), rgba(86, 17, 29, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 225, 229, 0.16), 0 0 18px rgba(255, 55, 76, 0.3);
 }
 
 .game-layout {
@@ -5402,7 +5452,7 @@ body.lobby-active.lobby-ready.lobby-skin-select-active .topbar {
 .daily-mission-countdown {
   display: grid;
   justify-items: center;
-  justify-self: end;
+  justify-self: center;
   align-content: center;
   gap: 12px;
   width: clamp(195px, 18vw, 235px);

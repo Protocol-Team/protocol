@@ -214,7 +214,7 @@ export function initLobby({
       const complete = Boolean(state.claimed?.[card.dataset.missionId]);
       card.classList.toggle("is-complete", complete);
       card.setAttribute("aria-disabled", complete ? "true" : "false");
-      if (card.matches(".daily-mission-stage-link, .daily-mission-shop-link")) {
+      if (card.matches(".daily-mission-stage-link, .daily-mission-shop-link, .daily-mission-darkweb-link")) {
         card.tabIndex = complete ? -1 : 0;
       }
       card.querySelector(".daily-mission-claim")?.toggleAttribute("disabled", complete);
@@ -957,6 +957,7 @@ export function initLobby({
       saveProfileSettings({ nickname });
       if (profileNicknameStatus) profileNicknameStatus.textContent = "닉네임이 저장되었습니다.";
       renderAuthPanel();
+      setProfilePanelOpen(false);
     }
   });
 
@@ -970,6 +971,11 @@ export function initLobby({
   });
 
   document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    if (target instanceof HTMLElement
+      && (target.matches("input, textarea, select") || target.isContentEditable)) {
+      return;
+    }
     if (event.code !== "Enter" && event.code !== "Space") return;
     enterLobby();
   });
@@ -1197,6 +1203,27 @@ export function initLobby({
   dailyMissionScreen?.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     openShopFromMission(event);
+  });
+
+  const openDarkWebFromMission = (event) => {
+    const card = event.target?.closest?.(".daily-mission-darkweb-link");
+    if (!card) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const state = getDailyMissionState();
+    if (state.claimed?.[card.dataset.missionId] || !isDarkWebUnlocked()) {
+      refreshDailyMission(state);
+      return;
+    }
+    playSfx("click");
+    hideLobby();
+    onStart?.("darkweb");
+  };
+
+  dailyMissionScreen?.addEventListener("click", openDarkWebFromMission);
+  dailyMissionScreen?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    openDarkWebFromMission(event);
   });
 
   shopBtn?.addEventListener("click", (event) => {

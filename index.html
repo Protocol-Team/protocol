@@ -96,6 +96,7 @@
             <span>종료까지</span>
             <strong id="dailyMissionCountdown">00시간 00분 00초</strong>
           </div>
+          <button class="lobby-button daily-mission-back" type="button" data-action="back-to-lobby">BACK</button>
         </header>
 
         <div class="daily-mission-grid">
@@ -130,7 +131,7 @@
             <h3>일일 미션 4회 클리어</h3>
             <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span><strong>2개</strong></div>
           </article>
-          <article class="daily-mission-card" data-mission-id="darkWebCore">
+          <article class="daily-mission-card daily-mission-darkweb-link" data-mission-id="darkWebCore" role="button" tabindex="0">
             <span class="daily-mission-index">06</span>
             <h3>DARK WEB MODE에서<br />메인 코어 룸 진입</h3>
             <div class="daily-mission-reward"><span class="usb-token" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span><strong>2개</strong></div>
@@ -150,7 +151,6 @@
           </div>
         </div>
 
-        <button class="lobby-button daily-mission-back" type="button" data-action="back-to-lobby">BACK</button>
       </div>
     </section>
 
@@ -237,6 +237,7 @@
                 </label>
                 <button id="helpBtn" class="secondary" type="button">도움말</button>
                 <button id="lobbyBtn" class="secondary" type="button">로비로 이동</button>
+                <button id="lobbyExitBtn" class="secondary lobby-exit-button" type="button">게임 종료</button>
               </div>
             </div>
           </div>
