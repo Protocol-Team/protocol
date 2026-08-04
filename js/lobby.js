@@ -984,9 +984,8 @@ export function initLobby({
     event.preventDefault();
     event.stopPropagation();
     startLobbyBgm();
-    const shouldOpen = !modePanelOpen;
-    closeLobbyPopups("mode");
-    setModePanelOpen(shouldOpen);
+    closeLobbyPopups();
+    showStageSelect();
   });
 
   modePanel.addEventListener("click", (event) => {
@@ -1203,27 +1202,6 @@ export function initLobby({
   dailyMissionScreen?.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     openShopFromMission(event);
-  });
-
-  const openDarkWebFromMission = (event) => {
-    const card = event.target?.closest?.(".daily-mission-darkweb-link");
-    if (!card) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const state = getDailyMissionState();
-    if (state.claimed?.[card.dataset.missionId] || !isDarkWebUnlocked()) {
-      refreshDailyMission(state);
-      return;
-    }
-    playSfx("click");
-    hideLobby();
-    onStart?.("darkweb");
-  };
-
-  dailyMissionScreen?.addEventListener("click", openDarkWebFromMission);
-  dailyMissionScreen?.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    openDarkWebFromMission(event);
   });
 
   shopBtn?.addEventListener("click", (event) => {

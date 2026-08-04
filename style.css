@@ -1697,7 +1697,7 @@ button.secondary {
   position: absolute;
   z-index: 2;
   left: 50%;
-  bottom: 3px;
+  bottom: -1px;
   transform: translateX(-50%);
   display: grid;
   place-items: center;
@@ -3253,6 +3253,21 @@ body.lobby-active .settings-panel .lobby-exit-button:focus-visible {
 .timer-pause-btn {
   min-width: 88px;
   white-space: nowrap;
+}
+
+body:not(.lobby-active):not(.mobile-client) #restartBtn,
+body:not(.lobby-active):not(.mobile-client) #pauseAttackBtn,
+body:not(.lobby-active):not(.mobile-client) .settings-toggle {
+  height: 42px;
+  min-height: 42px;
+  padding-block: 8px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+body:not(.lobby-active):not(.mobile-client) #restartBtn {
+  flex: 0 0 auto;
+  min-width: 110px;
 }
 
 .timer-pause-btn.active {
