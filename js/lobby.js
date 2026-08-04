@@ -53,6 +53,7 @@ const SELECTABLE_AI_SKINS = [
     name: "AI 시스템",
     desc: "기본 스킨",
     preview: "./assets/images/skin-previews/ai-classic-0.png",
+    lobbyPreview: { scale: 1.28, offsetY: -38, focusY: 34, originY: 34 },
     owned: true,
   },
   {
@@ -60,6 +61,7 @@ const SELECTABLE_AI_SKINS = [
     name: "과거의 그것",
     desc: "불빛은 박동없는\n심장으로 움직이고.",
     preview: "./assets/images/skin-previews/ai-android-0.png",
+    lobbyPreview: { scale: 1.35, offsetY: -17, focusY: 48, originY: 48 },
     owned: false,
   },
 ];
@@ -69,10 +71,36 @@ const SELECTABLE_HACKER_SKINS = [
     name: "해커",
     desc: "기본 스킨",
     preview: "./assets/images/hacker_script/idle.png",
+    lobbyPreview: { scale: 1.55, offsetX: -8, focusY: 28, originY: 32 },
     owned: true,
   },
 ];
 const MAX_SKIN_SLOTS = 5;
+
+// New skins inherit this centered portrait composition. Use lobbyPreview on a skin only
+// when its source artwork needs small eye-line or framing corrections.
+const DEFAULT_LOBBY_SKIN_PREVIEW = Object.freeze({
+  scale: 1.35,
+  offsetX: 0,
+  offsetY: -10,
+  focusX: 50,
+  focusY: 40,
+  originX: 50,
+  originY: 40,
+});
+
+function getLobbySkinPreviewStyle(skin) {
+  const preview = { ...DEFAULT_LOBBY_SKIN_PREVIEW, ...(skin?.lobbyPreview || {}) };
+  return [
+    `--skin-preview-scale:${preview.scale}`,
+    `--skin-preview-x:${preview.offsetX}px`,
+    `--skin-preview-y:${preview.offsetY}px`,
+    `--skin-preview-focus-x:${preview.focusX}%`,
+    `--skin-preview-focus-y:${preview.focusY}%`,
+    `--skin-preview-origin-x:${preview.originX}%`,
+    `--skin-preview-origin-y:${preview.originY}%`,
+  ].join(";");
+}
 
 export function initLobby({
   onStart,
@@ -681,7 +709,7 @@ export function initLobby({
   };
 
   const renderSkinPanel = () => {
-    renderSkinPanelContent(skinPanel, "", getSelectedSkin());
+    renderSkinPanelContent(skinPanel, "", getSelectedSkin(), getSelectedHackerSkin());
     refreshSkinButtons();
   };
 
@@ -772,6 +800,7 @@ export function initLobby({
   const setSkinSelectScreenOpen = (open, category = activeSkinCategory) => {
     if (open) renderSkinSelectScreen(category);
     skinSelectScreen.classList.toggle("hidden", !open);
+    document.body.classList.toggle("lobby-skin-select-active", Boolean(open));
     lobbyScreen?.classList.toggle("hidden", Boolean(open));
     setSkinPanelOpen(false);
   };
@@ -809,7 +838,7 @@ export function initLobby({
   const hideLobby = () => {
     active = false;
     root?.classList.add("hidden");
-    document.body.classList.remove("lobby-active", "lobby-ready", "lobby-modal-open");
+    document.body.classList.remove("lobby-active", "lobby-ready", "lobby-modal-open", "lobby-skin-select-active");
     setProfilePanelOpen(false);
     setSkinPanelOpen(false);
     setModePanelOpen(false);
@@ -1050,7 +1079,9 @@ export function initLobby({
     }
     if (event.target?.closest?.("[data-action='back-from-skins']")) {
       event.preventDefault();
+      event.stopPropagation();
       setSkinSelectScreenOpen(false);
+      setSkinPanelOpen(true);
       return;
     }
     const carouselAction = event.target?.closest?.("[data-skin-carousel]")?.dataset.skinCarousel;
@@ -1324,7 +1355,7 @@ function createSkinPanel() {
   const panel = document.createElement("div");
   panel.className = "lobby-skin-panel hidden";
   panel.setAttribute("aria-label", "캐릭터 스킨 선택");
-  renderSkinPanelContent(panel, "", "classic");
+  renderSkinPanelContent(panel, "", "classic", "classic");
 
   return panel;
 }
@@ -1354,22 +1385,24 @@ function createSkinSelectScreen() {
   return screen;
 }
 
-function renderSkinPanelContent(panel, category, selectedAiSkin) {
+function renderSkinPanelContent(panel, category, selectedAiSkin, selectedHackerSkin = "classic") {
   if (!category) {
+    const hackerSkin = SELECTABLE_HACKER_SKINS.find((skin) => skin.id === selectedHackerSkin)
+      || SELECTABLE_HACKER_SKINS[0];
+    const aiSkin = SELECTABLE_AI_SKINS.find((skin) => skin.id === selectedAiSkin)
+      || SELECTABLE_AI_SKINS[0];
     panel.classList.remove("skin-list-view");
     panel.innerHTML = `
       <div class="lobby-skin-categories">
         <button class="lobby-skin-category" type="button" data-open-skin-category="hacker">
-          <span class="lobby-skin-category-icon" aria-hidden="true">
-            <img src="./assets/images/skin-category/hacker.png" alt="">
-          </span>
-          <strong>해커</strong>
+          <span class="lobby-skin-equipped-badge"><span class="lobby-skin-equipped-dot" aria-hidden="true"></span><span>적용 중</span></span>
+          <span class="lobby-skin-category-preview-frame" aria-hidden="true"><img class="lobby-skin-category-preview" src="${hackerSkin.preview}" alt="" style="${getLobbySkinPreviewStyle(hackerSkin)}"></span>
+          <strong class="lobby-skin-category-label">해커</strong>
         </button>
-        <button class="lobby-skin-category" type="button" data-open-skin-category="ai">
-          <span class="lobby-skin-category-icon" aria-hidden="true">
-            <img src="./assets/images/skin-category/ai.webp" alt="">
-          </span>
-          <strong>AI</strong>
+        <button class="lobby-skin-category" type="button" data-open-skin-category="ai" data-current-skin="${aiSkin.id}">
+          <span class="lobby-skin-equipped-badge"><span class="lobby-skin-equipped-dot" aria-hidden="true"></span><span>적용 중</span></span>
+          <span class="lobby-skin-category-preview-frame" aria-hidden="true"><img class="lobby-skin-category-preview" src="${aiSkin.preview}" alt="" style="${getLobbySkinPreviewStyle(aiSkin)}"></span>
+          <strong class="lobby-skin-category-label">AI</strong>
         </button>
       </div>`;
     return;
