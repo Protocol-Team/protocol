@@ -53,7 +53,7 @@ const SELECTABLE_AI_SKINS = [
     name: "AI 시스템",
     desc: "기본 스킨",
     preview: "./assets/images/skin-previews/ai-classic-0.png",
-    lobbyPreview: { scale: 1.28, offsetY: -38, focusY: 34, originY: 34 },
+    lobbyPreview: { scale: 1.28, offsetY: -47, focusY: 34, originY: 34 },
     owned: true,
   },
   {
@@ -61,7 +61,7 @@ const SELECTABLE_AI_SKINS = [
     name: "과거의 그것",
     desc: "불빛은 박동없는\n심장으로 움직이고.",
     preview: "./assets/images/skin-previews/ai-android-0.png",
-    lobbyPreview: { scale: 1.35, offsetY: -17, focusY: 48, originY: 48 },
+    lobbyPreview: { scale: 1.35, offsetY: -23, focusY: 48, originY: 48 },
     owned: false,
   },
 ];
@@ -71,7 +71,7 @@ const SELECTABLE_HACKER_SKINS = [
     name: "해커",
     desc: "기본 스킨",
     preview: "./assets/images/hacker_script/idle.png",
-    lobbyPreview: { scale: 1.55, offsetX: -8, focusY: 28, originY: 32 },
+    lobbyPreview: { scale: 1.55, offsetX: -12, offsetY: -16, focusY: 28, originY: 32 },
     owned: true,
   },
 ];
@@ -1421,13 +1421,12 @@ function renderSkinPanelContent(panel, category, selectedAiSkin, selectedHackerS
     panel.classList.remove("skin-list-view");
     panel.innerHTML = `
       <div class="lobby-skin-categories">
+        <span class="lobby-skin-equipped-badge"><span class="lobby-skin-equipped-dot" aria-hidden="true"></span><span>현재 적용 스킨</span></span>
         <button class="lobby-skin-category" type="button" data-open-skin-category="hacker">
-          <span class="lobby-skin-equipped-badge"><span class="lobby-skin-equipped-dot" aria-hidden="true"></span><span>적용 중</span></span>
           <span class="lobby-skin-category-preview-frame" aria-hidden="true"><img class="lobby-skin-category-preview" src="${hackerSkin.preview}" alt="" style="${getLobbySkinPreviewStyle(hackerSkin)}"></span>
           <strong class="lobby-skin-category-label">해커</strong>
         </button>
         <button class="lobby-skin-category" type="button" data-open-skin-category="ai" data-current-skin="${aiSkin.id}">
-          <span class="lobby-skin-equipped-badge"><span class="lobby-skin-equipped-dot" aria-hidden="true"></span><span>적용 중</span></span>
           <span class="lobby-skin-category-preview-frame" aria-hidden="true"><img class="lobby-skin-category-preview" src="${aiSkin.preview}" alt="" style="${getLobbySkinPreviewStyle(aiSkin)}"></span>
           <strong class="lobby-skin-category-label">AI</strong>
         </button>

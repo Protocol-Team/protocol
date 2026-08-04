@@ -1610,7 +1610,7 @@ button.secondary {
 
 .lobby-skin-panel:not(.skin-list-view) {
   top: var(--skin-category-panel-top);
-  width: min(360px, calc(100vw - 48px));
+  width: min(346px, calc(100vw - 48px));
   height: var(--skin-category-panel-height);
   gap: 0;
   padding: 10px;
@@ -1619,7 +1619,7 @@ button.secondary {
 .lobby-skin-categories {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 6px;
   height: 100%;
 }
 
@@ -1631,11 +1631,11 @@ button.secondary {
   justify-items: center;
   gap: 0;
   min-height: 0;
-  overflow: hidden;
-  padding: 7px 8px 6px;
-  border: 1px solid rgba(24, 224, 255, 0.42);
-  border-radius: 12px;
-  background: rgba(8, 24, 37, 0.9);
+  overflow: visible;
+  padding: 3px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   color: #e9f8ff;
   font-size: 14px;
   line-height: 1;
@@ -1644,8 +1644,8 @@ button.secondary {
 .lobby-skin-category-preview-frame {
   display: grid;
   place-items: center;
-  width: 132px;
-  height: 132px;
+  width: 140px;
+  height: 140px;
   max-width: 100%;
   max-height: 100%;
   min-height: 0;
@@ -1654,26 +1654,26 @@ button.secondary {
   border: 2px solid rgba(24, 224, 255, 0.3);
   border-radius: 8px;
   box-shadow: none;
+  transform: translateY(11px);
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .lobby-skin-equipped-badge {
   position: absolute;
   z-index: 2;
-  top: 3px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 4px;
+  left: 14px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 25px;
-  padding: 4px 9px;
-  border: 1px solid rgba(39, 255, 200, 0.38);
+  gap: 4px;
+  min-height: 20px;
+  padding: 2px 7px;
+  border: 1px solid #27ffc8;
   border-radius: 999px;
   background: rgba(5, 20, 29, 0.98);
-  color: rgba(39, 255, 200, 0.55);
-  box-shadow: none;
-  font-size: 12px;
+  color: #27ffc8;
+  box-shadow: 0 0 12px rgba(39, 255, 200, 0.3);
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -1683,13 +1683,13 @@ button.secondary {
 }
 
 .lobby-skin-equipped-dot {
-  width: 10px;
-  height: 10px;
-  flex: 0 0 10px;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
   border-radius: 50%;
-  border: 1px solid rgba(39, 255, 200, 0.45);
-  background: rgba(39, 255, 200, 0.14);
-  box-shadow: none;
+  border: 1px solid #27ffc8;
+  background: #27ffc8;
+  box-shadow: 0 0 9px rgba(39, 255, 200, 0.9);
   transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -1731,28 +1731,13 @@ button.secondary {
 
 .lobby-skin-category:hover,
 .lobby-skin-category:focus-visible {
-  border-color: #27ffc8;
-  box-shadow: 0 0 18px rgba(39, 255, 200, 0.16);
+  box-shadow: none;
 }
 
 .lobby-skin-category:hover .lobby-skin-category-preview-frame,
 .lobby-skin-category:focus-visible .lobby-skin-category-preview-frame {
   border-color: #27ffc8;
   box-shadow: 0 0 14px rgba(39, 255, 200, 0.3), inset 0 0 8px rgba(39, 255, 200, 0.14);
-}
-
-.lobby-skin-category:hover .lobby-skin-equipped-dot,
-.lobby-skin-category:focus-visible .lobby-skin-equipped-dot {
-  border-color: #27ffc8;
-  background: #27ffc8;
-  box-shadow: 0 0 9px rgba(39, 255, 200, 0.9);
-}
-
-.lobby-skin-category:hover .lobby-skin-equipped-badge,
-.lobby-skin-category:focus-visible .lobby-skin-equipped-badge {
-  color: #27ffc8;
-  border-color: #27ffc8;
-  box-shadow: 0 0 12px rgba(39, 255, 200, 0.3);
 }
 
 .lobby-skin-category:hover .lobby-skin-category-label,
@@ -1766,7 +1751,7 @@ button.secondary {
   .lobby-skin-panel:not(.skin-list-view) {
     --skin-category-panel-top: 0px;
     --skin-category-panel-height: 148px;
-    width: min(360px, calc(100vw - 48px));
+    width: min(346px, calc(100vw - 48px));
   }
 }
 
