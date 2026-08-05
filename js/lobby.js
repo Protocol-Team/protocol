@@ -6,10 +6,15 @@ import {
   getPurchasedSkins as loadPurchasedSkins,
   getSelectedSkin as loadSelectedSkin,
   getSelectedHackerSkin,
+  getOwnedHackerSkins,
+  getOwnedLobbySkins,
+  getSelectedLobbySkin,
   savePurchasedSkins,
   saveSelectedSkin,
   saveSelectedHackerSkin,
-} from "./repositories/localGameRepository.js";
+  saveSelectedLobbySkin,
+} from "./repositories/localGameRepository.js?v=20260806-summer-season";
+import { HACKER_SKINS, LOBBY_SKINS } from "./skinRegistry.js?v=20260806-summer-season";
 import {
   getDailyMissionState,
   getDailyUsbHistory,
@@ -36,7 +41,7 @@ import {
   getSeasonPassState,
   initSeasonPass,
   unlockSeasonPassPremium,
-} from "./repositories/seasonPassRepository.js";
+} from "./repositories/seasonPassRepository.js?v=20260806-summer-season";
 
 const CLASSIC_CLEAR_STORAGE_KEY = "traceProtocolClassicStage11Returned";
 const PROFILE_STORAGE_KEY = "traceProtocolProfileSettings";
@@ -73,16 +78,8 @@ const SELECTABLE_AI_SKINS = [
     owned: true,
   },
 ];
-const SELECTABLE_HACKER_SKINS = [
-  {
-    id: "classic",
-    name: "해커",
-    desc: "기본 스킨",
-    preview: "./assets/images/hacker_script/idle.png",
-    lobbyPreview: { scale: 1.55, offsetX: -12, offsetY: -16, focusY: 28, originY: 32 },
-    owned: true,
-  },
-];
+const SELECTABLE_HACKER_SKINS = Object.values(HACKER_SKINS);
+const SELECTABLE_LOBBY_SKINS = Object.values(LOBBY_SKINS);
 const MAX_SKIN_SLOTS = 5;
 
 // New skins inherit this centered portrait composition. Use lobbyPreview on a skin only
@@ -171,6 +168,8 @@ export function initLobby({
   let helpOverlayOpen = false;
   let skinPanelOpen = false;
   let activeSkinCategory = "";
+  let pendingHackerSkinId = getSelectedHackerSkin();
+  let pendingLobbySkinId = getSelectedLobbySkin();
   let modePanelOpen = false;
   let profilePanelOpen = false;
   let stageSelectOpen = false;
@@ -183,6 +182,7 @@ export function initLobby({
   let authSession = null;
   let authLoading = true;
   let authError = "";
+  let lobbyBackgroundRequest = 0;
 
   initSeasonPass();
 
@@ -261,7 +261,7 @@ export function initLobby({
   window.addEventListener("protocol:daily-mission-update", (event) => refreshDailyMission(event.detail));
 
   const renderSeasonPassReward = (reward) => {
-    if (reward.type === "item") {
+    if (reward.type !== "usb") {
       return `<img src="${reward.icon}" alt=""><span>${reward.name}</span>`;
     }
     return `<span class="season-pass-usb-icon" aria-hidden="true"><img src="./assets/images/ui/usb-drive.png" alt=""></span><strong>×${reward.amount}</strong>`;
@@ -299,7 +299,10 @@ export function initLobby({
   };
 
   renderSeasonPass();
-  window.addEventListener("protocol:season-pass-update", (event) => renderSeasonPass(event.detail));
+  window.addEventListener("protocol:season-pass-update", (event) => {
+    renderSeasonPass(event.detail);
+    if (!skinSelectScreen.classList.contains("hidden")) renderSkinSelectScreen(activeSkinCategory);
+  });
 
   seasonPassScroller?.addEventListener("wheel", (event) => {
     if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
@@ -701,6 +704,7 @@ export function initLobby({
 
   const refreshSkinButtons = () => {
     const selectedSkin = getSelectedSkin();
+    const selectedHackerSkin = getSelectedHackerSkin();
     skinPanel.querySelectorAll('.lobby-skin-option[data-skin-category="ai"]').forEach((button) => {
       const selected = button.dataset.skin === selectedSkin;
       const locked = !isSkinOwned(button.dataset.skin);
@@ -710,9 +714,12 @@ export function initLobby({
       button.setAttribute("aria-disabled", locked ? "true" : "false");
     });
     skinPanel.querySelectorAll('.lobby-skin-option[data-skin-category="hacker"]').forEach((button) => {
-      const selected = button.dataset.skin === "classic";
+      const selected = button.dataset.skin === selectedHackerSkin;
+      const locked = !getOwnedHackerSkins().includes(button.dataset.skin);
       button.classList.toggle("selected", selected);
+      button.classList.toggle("locked", locked);
       button.setAttribute("aria-pressed", selected ? "true" : "false");
+      button.setAttribute("aria-disabled", locked ? "true" : "false");
     });
   };
 
@@ -722,17 +729,29 @@ export function initLobby({
   };
 
   const renderSkinSelectScreen = (category = activeSkinCategory) => {
-    activeSkinCategory = category === "ai" ? "ai" : "hacker";
+    activeSkinCategory = category === "ai" ? "ai" : category === "lobby" ? "lobby" : "hacker";
     const isAi = activeSkinCategory === "ai";
-    const skins = isAi ? SELECTABLE_AI_SKINS : SELECTABLE_HACKER_SKINS;
+    const isLobby = activeSkinCategory === "lobby";
+    const skins = isAi ? SELECTABLE_AI_SKINS : isLobby ? SELECTABLE_LOBBY_SKINS : SELECTABLE_HACKER_SKINS;
     const storedHackerSkin = getSelectedHackerSkin();
-    const selectedSkin = isAi
+    const equippedSkin = isAi
       ? getSelectedSkin()
-      : (skins.some((skin) => skin.id === storedHackerSkin) ? storedHackerSkin : skins[0].id);
-    const slots = Array.from({ length: MAX_SKIN_SLOTS }, (_, index) => skins[index] || null);
-    skinSelectScreen.querySelector(".lobby-skin-select-kicker").textContent = isAi ? "AI SYSTEM SKIN" : "HACKER SKIN";
+      : isLobby ? getSelectedLobbySkin() : storedHackerSkin;
+    if (!isAi && !isLobby && !skins.some((skin) => skin.id === pendingHackerSkinId)) pendingHackerSkinId = equippedSkin;
+    if (isLobby && !skins.some((skin) => skin.id === pendingLobbySkinId)) pendingLobbySkinId = equippedSkin;
+    const selectedSkin = isAi ? equippedSkin : isLobby ? pendingLobbySkinId : pendingHackerSkinId;
+    const slots = isLobby ? skins : Array.from({ length: MAX_SKIN_SLOTS }, (_, index) => skins[index] || null);
+    const seasonState = getSeasonPassState();
+    const ownedIds = isLobby ? getOwnedLobbySkins() : getOwnedHackerSkins();
+    skinSelectScreen.classList.toggle("is-ai-skin-view", isAi);
+    skinSelectScreen.querySelector(".lobby-skin-select-kicker").textContent = isAi ? "AI SYSTEM SKIN" : isLobby ? "LOBBY THEME" : "HACKER SKIN";
     skinSelectScreen.querySelector(".lobby-skin-select-title").textContent =
-      `${isAi ? "AI 시스템" : "해커"} 스킨을 선택하세요.`;
+      isLobby ? "로비 테마를 선택하세요." : `${isAi ? "AI 시스템" : "해커"} 스킨을 선택하세요.`;
+    skinSelectScreen.querySelectorAll("[data-skin-tab]").forEach((tab) => {
+      const activeTab = tab.dataset.skinTab === activeSkinCategory;
+      tab.classList.toggle("selected", activeTab);
+      tab.setAttribute("aria-selected", activeTab ? "true" : "false");
+    });
     skinSelectScreen.querySelector(".lobby-skin-select-track").innerHTML = slots.map((skin, index) => {
       if (!skin) return `
         <button class="lobby-skin-select-card empty" type="button" disabled>
@@ -740,20 +759,34 @@ export function initLobby({
           <b class="lobby-skin-empty-mark">EMPTY</b>
           <div class="lobby-skin-card-copy"><strong>COMMING SOON</strong></div>
         </button>`;
-      const owned = !isAi || isSkinOwned(skin.id);
+      const requiredLevel = skin.id === "summerOverride" ? 10 : skin.id === "summerSeasonLobby" ? 15 : 0;
+      const claimKey = requiredLevel ? `premium-${requiredLevel}` : "";
+      const owned = isAi ? isSkinOwned(skin.id) : ownedIds.includes(skin.id);
+      const claimable = !owned && requiredLevel > 0 && seasonState.premiumUnlocked
+        && seasonState.level >= requiredLevel && !seasonState.claimed?.[claimKey];
       const selected = skin.id === selectedSkin;
+      const equipped = skin.id === equippedSkin;
+      const status = owned
+        ? equipped ? "현재 적용" : "선택 가능"
+        : claimable ? "시즌패스에서 보상 수령 필요" : isAi ? "구매 필요" : `프리미엄 패스 Lv.${requiredLevel} 보상`;
       return `
-        <button class="lobby-skin-select-card${selected ? " selected" : ""}${owned ? "" : " locked"}"
-          type="button" data-full-skin="${skin.id}" data-skin-category="${activeSkinCategory}" aria-pressed="${selected}">
-          <span>SKIN ${index + 1}</span>
-          <div class="lobby-skin-card-preview" data-preview-skin="${activeSkinCategory}-${skin.id}" aria-hidden="true"><img src="${skin.preview}" alt=""></div>
+        <button class="lobby-skin-select-card${selected ? " selected" : ""}${equipped ? " equipped" : ""}${owned ? "" : " locked"}${claimable ? " claimable" : ""}"
+          type="button" data-full-skin="${skin.id}" data-skin-category="${activeSkinCategory}" aria-pressed="${selected}" ${owned ? "" : "disabled"}>
+          <span>${isLobby ? `THEME ${index + 1}` : `SKIN ${index + 1}`}</span>
+          <div class="lobby-skin-card-preview" data-preview-skin="${activeSkinCategory}-${skin.id}" aria-hidden="true"><img src="${isLobby ? skin.asset : skin.preview}" data-preview-fallback="${isLobby ? LOBBY_SKINS.default.asset : HACKER_SKINS.classic.preview}" alt=""></div>
           <div class="lobby-skin-card-copy">
-            <strong>${skin.name}</strong><small>${skin.desc}</small>${owned ? "" : "<em>구매 필요</em>"}
+            <strong>${skin.name}</strong><small>${skin.desc}</small><em>${status}</em>
           </div>
         </button>`;
     }).join("");
     skinSelectScreen.dataset.availableSkinCount = String(skins.length);
     const selectedIndex = Math.max(0, skins.findIndex((skin) => skin.id === selectedSkin));
+    const applyButton = skinSelectScreen.querySelector("[data-action='apply-skin-selection']");
+    if (applyButton) {
+      applyButton.classList.toggle("hidden", isAi);
+      applyButton.disabled = isAi || selectedSkin === equippedSkin || !ownedIds.includes(selectedSkin);
+      applyButton.textContent = selectedSkin === equippedSkin ? "현재 적용" : "적용";
+    }
     setSkinCarouselIndex(selectedIndex, { behavior: "auto" });
   };
 
@@ -776,14 +809,20 @@ export function initLobby({
   };
 
   const selectCarouselSkinAtIndex = (index) => {
-    const skins = activeSkinCategory === "ai" ? SELECTABLE_AI_SKINS : SELECTABLE_HACKER_SKINS;
+    const skins = activeSkinCategory === "ai"
+      ? SELECTABLE_AI_SKINS
+      : activeSkinCategory === "lobby" ? SELECTABLE_LOBBY_SKINS : SELECTABLE_HACKER_SKINS;
     const skin = skins[index];
     if (!skin) return false;
     if (activeSkinCategory === "ai") {
       selectSkin(skin.id);
       if (!isSkinOwned(skin.id)) return false;
+    } else if (activeSkinCategory === "lobby") {
+      if (!getOwnedLobbySkins().includes(skin.id)) return false;
+      pendingLobbySkinId = skin.id;
     } else {
-      saveSelectedHackerSkin(skin.id);
+      if (!getOwnedHackerSkins().includes(skin.id)) return false;
+      pendingHackerSkinId = skin.id;
     }
     renderSkinSelectScreen(activeSkinCategory);
     setSkinCarouselIndex(index);
@@ -827,6 +866,29 @@ export function initLobby({
     }));
   };
 
+  const applyLobbyBackground = (skinId = getSelectedLobbySkin()) => {
+    const requestId = ++lobbyBackgroundRequest;
+    const skin = LOBBY_SKINS[skinId] || LOBBY_SKINS.default;
+    const fallback = LOBBY_SKINS.default;
+    const setBackground = (asset) => {
+      if (requestId !== lobbyBackgroundRequest || !lobbyScreen) return;
+      lobbyScreen.style.backgroundImage = `linear-gradient(90deg, rgba(3, 8, 13, 0.9), rgba(3, 8, 13, 0.44) 48%, rgba(3, 8, 13, 0.1)), url("${asset}")`;
+    };
+    if (skin.id === fallback.id) {
+      setBackground(fallback.asset);
+      return;
+    }
+    const image = new Image();
+    image.addEventListener("load", () => setBackground(skin.asset), { once: true });
+    image.addEventListener("error", () => {
+      if (requestId !== lobbyBackgroundRequest) return;
+      saveSelectedLobbySkin(fallback.id);
+      pendingLobbySkinId = fallback.id;
+      setBackground(fallback.asset);
+    }, { once: true });
+    image.src = skin.asset;
+  };
+
   const showLobby = () => {
     active = true;
     root?.classList.remove("hidden");
@@ -840,6 +902,7 @@ export function initLobby({
     setPathNoteModalOpen(false);
     splashScreen?.classList.add("hidden");
     showFeatureScreen(null);
+    applyLobbyBackground();
     playLobbyBgm();
   };
 
@@ -1058,6 +1121,13 @@ export function initLobby({
   });
 
   skinPanel.addEventListener("click", (event) => {
+    const panelTab = event.target?.closest?.("[data-open-skin-tab]");
+    if (panelTab) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (panelTab.dataset.openSkinTab === "lobby") setSkinSelectScreenOpen(true, "lobby");
+      return;
+    }
     const categoryButton = event.target?.closest?.("[data-open-skin-category]");
     if (categoryButton) {
       event.preventDefault();
@@ -1084,6 +1154,26 @@ export function initLobby({
   });
 
   skinSelectScreen.addEventListener("click", (event) => {
+    const tab = event.target?.closest?.("[data-skin-tab]");
+    if (tab) {
+      event.preventDefault();
+      renderSkinSelectScreen(tab.dataset.skinTab);
+      return;
+    }
+    if (event.target?.closest?.("[data-action='apply-skin-selection']")) {
+      event.preventDefault();
+      if (activeSkinCategory === "lobby" && getOwnedLobbySkins().includes(pendingLobbySkinId)) {
+        saveSelectedLobbySkin(pendingLobbySkinId);
+        applyLobbyBackground(pendingLobbySkinId);
+      } else if (activeSkinCategory === "hacker" && getOwnedHackerSkins().includes(pendingHackerSkinId)) {
+        saveSelectedHackerSkin(pendingHackerSkinId);
+        document.dispatchEvent(new CustomEvent("protocol:hacker-skin-change", { detail: { skin: pendingHackerSkinId } }));
+      }
+      renderSkinPanel();
+      renderSkinSelectScreen(activeSkinCategory);
+      playSfx("click");
+      return;
+    }
     if (event.target?.closest?.("[data-action='start-from-skins']")) {
       event.preventDefault();
       setSkinSelectScreenOpen(false);
@@ -1108,10 +1198,18 @@ export function initLobby({
     const button = event.target?.closest?.("[data-full-skin]");
     if (!button) return;
     event.preventDefault();
-    const skins = button.dataset.skinCategory === "ai" ? SELECTABLE_AI_SKINS : SELECTABLE_HACKER_SKINS;
+    const skins = button.dataset.skinCategory === "ai"
+      ? SELECTABLE_AI_SKINS
+      : button.dataset.skinCategory === "lobby" ? SELECTABLE_LOBBY_SKINS : SELECTABLE_HACKER_SKINS;
     const index = skins.findIndex((skin) => skin.id === button.dataset.fullSkin);
     selectCarouselSkinAtIndex(index);
   });
+  skinSelectScreen.addEventListener("error", (event) => {
+    const image = event.target;
+    if (!(image instanceof HTMLImageElement) || !image.dataset.previewFallback) return;
+    if (image.src === image.dataset.previewFallback) return;
+    image.src = image.dataset.previewFallback;
+  }, true);
   skinSelectScreen.querySelector(".lobby-skin-select-scroller")?.addEventListener("scroll", syncSkinCarouselControls, { passive: true });
 
   skinPurchaseModal.addEventListener("click", (event) => {
@@ -1386,6 +1484,10 @@ function createSkinSelectScreen() {
         </div>
         <button class="lobby-button" type="button" data-action="back-from-skins">BACK</button>
       </div>
+      <div class="lobby-skin-tabs" role="tablist" aria-label="스킨 종류">
+        <button type="button" role="tab" data-skin-tab="hacker" aria-selected="true">해커 스킨</button>
+        <button type="button" role="tab" data-skin-tab="lobby" aria-selected="false">로비 테마</button>
+      </div>
       <div class="lobby-skin-select-carousel">
         <button class="lobby-skin-carousel-button previous" type="button" data-action="previous-skin" data-skin-carousel="previous" aria-label="이전 스킨" disabled>‹</button>
         <div class="lobby-skin-select-scroller" aria-label="스킨 목록">
@@ -1393,7 +1495,10 @@ function createSkinSelectScreen() {
         </div>
         <button class="lobby-skin-carousel-button next" type="button" data-action="next-skin" data-skin-carousel="next" aria-label="다음 스킨">›</button>
       </div>
-      <button class="lobby-button lobby-skin-start-button" type="button" data-action="start-from-skins">START GAME</button>
+      <div class="lobby-skin-select-actions">
+        <button class="lobby-button lobby-skin-apply-button" type="button" data-action="apply-skin-selection">적용</button>
+        <button class="lobby-button lobby-skin-start-button" type="button" data-action="start-from-skins">START GAME</button>
+      </div>
     </div>`;
   return screen;
 }
@@ -1406,6 +1511,10 @@ function renderSkinPanelContent(panel, category, selectedAiSkin, selectedHackerS
       || SELECTABLE_AI_SKINS[0];
     panel.classList.remove("skin-list-view");
     panel.innerHTML = `
+      <div class="lobby-skin-panel-tabs" role="tablist" aria-label="스킨 종류">
+        <button type="button" class="selected" role="tab" data-open-skin-tab="hacker" aria-selected="true">해커 스킨</button>
+        <button type="button" role="tab" data-open-skin-tab="lobby" aria-selected="false">로비 테마</button>
+      </div>
       <div class="lobby-skin-categories">
         <span class="lobby-skin-equipped-badge"><span class="lobby-skin-equipped-dot" aria-hidden="true"></span><span>현재 적용 스킨</span></span>
         <button class="lobby-skin-category" type="button" data-open-skin-category="hacker">
@@ -1432,7 +1541,7 @@ function renderSkinPanelContent(panel, category, selectedAiSkin, selectedHackerS
     </div>
     <div class="lobby-skin-options">
       ${slots.map((skin, index) => skin ? `
-        <button class="lobby-skin-option${(isAi && skin.id === selectedAiSkin) || (!isAi && index === 0) ? " selected" : ""}"
+        <button class="lobby-skin-option${(isAi && skin.id === selectedAiSkin) || (!isAi && skin.id === selectedHackerSkin) ? " selected" : ""}"
           type="button" data-skin-category="${category}" data-skin="${skin.id}" aria-pressed="false">
           <span class="lobby-skin-slot-number" aria-hidden="true">${index + 1}</span>
           <span><strong>${skin.name}</strong><small>${skin.desc}</small></span>

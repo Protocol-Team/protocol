@@ -1,7 +1,12 @@
+import { isValidHackerSkinId, isValidLobbySkinId } from "../skinRegistry.js?v=20260806-summer-season";
+
 const BEST_STAGE_STORAGE_KEY = "traceProtocolBest";
 const PURCHASED_AI_SKINS_STORAGE_KEY = "traceProtocolPurchasedAiSkins";
 const SELECTED_AI_SKIN_STORAGE_KEY = "traceProtocolAiPortraitSkin";
 const SELECTED_HACKER_SKIN_STORAGE_KEY = "traceProtocolHackerPortraitSkin";
+const OWNED_HACKER_SKINS_STORAGE_KEY = "traceProtocolOwnedHackerSkins";
+const OWNED_LOBBY_SKINS_STORAGE_KEY = "traceProtocolOwnedLobbySkins";
+const SELECTED_LOBBY_SKIN_STORAGE_KEY = "traceProtocolLobbySkin";
 
 const DEFAULT_BEST_STAGE = 0;
 const DEFAULT_PURCHASED_SKINS = [];
@@ -78,12 +83,63 @@ export function saveSelectedSkin(skinId) {
 
 export function getSelectedHackerSkin() {
   const selectedSkin = readStorageValue(SELECTED_HACKER_SKIN_STORAGE_KEY);
-  return selectedSkin || DEFAULT_SELECTED_SKIN;
+  return isValidHackerSkinId(selectedSkin) && getOwnedHackerSkins().includes(selectedSkin)
+    ? selectedSkin
+    : DEFAULT_SELECTED_SKIN;
 }
 
 export function saveSelectedHackerSkin(skinId) {
+  const selectedSkin = isValidHackerSkinId(skinId) && getOwnedHackerSkins().includes(skinId)
+    ? skinId
+    : DEFAULT_SELECTED_SKIN;
   writeStorageValue(
     SELECTED_HACKER_SKIN_STORAGE_KEY,
-    typeof skinId === "string" && skinId.length > 0 ? skinId : DEFAULT_SELECTED_SKIN
+    selectedSkin
   );
+}
+
+export function getOwnedHackerSkins() {
+  try {
+    const stored = normalizeSkinIds(JSON.parse(readStorageValue(OWNED_HACKER_SKINS_STORAGE_KEY) || "[]"));
+    return [...new Set([DEFAULT_SELECTED_SKIN, ...stored.filter(isValidHackerSkinId)])];
+  } catch {
+    return [DEFAULT_SELECTED_SKIN];
+  }
+}
+
+export function grantHackerSkin(skinId) {
+  if (!isValidHackerSkinId(skinId)) return getOwnedHackerSkins();
+  const owned = [...new Set([...getOwnedHackerSkins(), skinId])];
+  writeStorageValue(OWNED_HACKER_SKINS_STORAGE_KEY, JSON.stringify(owned));
+  return owned;
+}
+
+export function getOwnedLobbySkins() {
+  try {
+    const stored = normalizeSkinIds(JSON.parse(readStorageValue(OWNED_LOBBY_SKINS_STORAGE_KEY) || "[]"));
+    return [...new Set(["default", ...stored.filter(isValidLobbySkinId)])];
+  } catch {
+    return ["default"];
+  }
+}
+
+export function grantLobbySkin(skinId) {
+  if (!isValidLobbySkinId(skinId)) return getOwnedLobbySkins();
+  const owned = [...new Set([...getOwnedLobbySkins(), skinId])];
+  writeStorageValue(OWNED_LOBBY_SKINS_STORAGE_KEY, JSON.stringify(owned));
+  return owned;
+}
+
+export function getSelectedLobbySkin() {
+  const selectedSkin = readStorageValue(SELECTED_LOBBY_SKIN_STORAGE_KEY);
+  return isValidLobbySkinId(selectedSkin) && getOwnedLobbySkins().includes(selectedSkin)
+    ? selectedSkin
+    : "default";
+}
+
+export function saveSelectedLobbySkin(skinId) {
+  const selectedSkin = isValidLobbySkinId(skinId) && getOwnedLobbySkins().includes(skinId)
+    ? skinId
+    : "default";
+  writeStorageValue(SELECTED_LOBBY_SKIN_STORAGE_KEY, selectedSkin);
 }

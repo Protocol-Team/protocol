@@ -17,7 +17,7 @@ import {
   pickStageOneLayoutPresetId,
 } from "./data.js?v=20260723-shield-module";
 import { createHacker, updateAttack, activateHack } from "./player.js?v=20260724-right-angle-wall-climb";
-import { initUI } from "./ui.js?v=20260803-dialogue-v1";
+import { initUI } from "./ui.js?v=20260806-summer-season";
 import { isAttackStage, getDefenseBudget, getStageDefinition, createPlatforms, createBaseHazards, createTrapSlots } from "./stage.js?v=20260724-shared-attack-hazards";
 import {
   placeTrapAtSlot,
@@ -29,12 +29,12 @@ import {
 } from "./trap.js?v=20260729-camera-triangle-tutorial-v2";
 import { startReplay as startReplayMode, updateDefenseReplay } from "./replay.js?v=20260724-stage-effect-cleanup";
 import { playBgm, playLobbyBgm, playSfx, stopAllSfx, stopBgm, stopSfx } from "./audio.js?v=20260724-stage-effect-cleanup";
-import { initLobby } from "./lobby.js?v=20260804-darkweb-route-v1";
+import { initLobby } from "./lobby.js?v=20260806-summer-season";
 import {
   recordDailyMissionEvent,
   recordStageClearForDailyMissions,
 } from "./repositories/dailyMissionRepository.js?v=20260803-currency-v1";
-import { getBestStage, resetBestStage, saveBestStage } from "./repositories/localGameRepository.js";
+import { getBestStage, resetBestStage, saveBestStage } from "./repositories/localGameRepository.js?v=20260806-summer-season";
 import { consumeShopItem, getShopInventory } from "./repositories/shopRepository.js";
 
 const BGM_TRACKS = {
