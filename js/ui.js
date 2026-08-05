@@ -30,7 +30,8 @@ import {
   setSfxVolume,
   unlockAudio,
 } from "./audio.js?v=20260724-stage-effect-cleanup";
-import { getSelectedSkin } from "./repositories/localGameRepository.js";
+import { getSelectedHackerSkin, getSelectedSkin } from "./repositories/localGameRepository.js?v=20260806-summer-season";
+import { HACKER_SKINS } from "./skinRegistry.js?v=20260806-summer-season";
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 540;
@@ -83,7 +84,7 @@ const trapImages = createTrapImages();
 const cameraArtLayers = new WeakMap();
 const stageImages = createStageImages();
 const backgroundImages = createBackgroundImages();
-const HACKER_IMAGE_BASE_URL = new URL("../assets/images/hacker_new_frames/", import.meta.url);
+const HACKER_IMAGE_BASE_URL = HACKER_SKINS.classic.animationBaseUrl;
 const HACKER_SCRIPT_IMAGE_BASE_URL = new URL("../assets/images/hacker_script/", import.meta.url);
 const AI_SCRIPT_IMAGE_BASE_URL = new URL("../assets/images/AI_script/", import.meta.url);
 const AI_ANDROID_SCRIPT_IMAGE_BASE_URL = new URL("../assets/images/AI_skin1/", import.meta.url);
@@ -121,36 +122,6 @@ const AI_SCRIPT_SKINS = {
     },
   },
 };
-const HACKER_ANIMATIONS = {
-  idle: {
-    files: createNumberedFrameFiles("idle", 8),
-    frameSeconds: [0.14, 0.14, 0.14, 0.14, 0.14, 0.14, 0.14, 0.14],
-  },
-  run: {
-    files: createNumberedFrameFiles("run", 8),
-    frameSeconds: [0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09],
-  },
-  jumpStart: {
-    files: createNumberedFrameFiles("jumpStart", 3),
-    frameSeconds: [0.14, 0.11, 0.09],
-  },
-  jumpAir: {
-    files: createNumberedFrameFiles("jumpAir", 3),
-    frameSeconds: [0.11, 0.11, 0.11],
-  },
-  jumpLanding: {
-    files: createNumberedFrameFiles("jumpLanding", 2),
-    frameSeconds: [0.16, 0.22],
-  },
-  slide: {
-    files: createNumberedFrameFiles("slide", 6),
-    frameSeconds: [0.11, 0.12, 0.18, 0.18, 0.14, 0.22],
-  },
-  climb: {
-    files: createNumberedFrameFiles("climb", 6),
-    frameSeconds: [0.14, 0.14, 0.14, 0.14, 0.14, 0.14],
-  },
-};
 const HACKING_EFFECT_DURATION = 0.84;
 const HACKING_EFFECT_ANIMATION = {
   files: createNumberedFrameFiles("hacking_effect", 12),
@@ -169,7 +140,7 @@ const AI_SCRIPT_IMAGE_FILES = {
   eyes_closed: "eyes_closed.gif",
   happy: "happy.gif",
 };
-const hackerImages = createHackerImages();
+const hackerImagesBySkin = createHackerImages();
 const hackingEffectImages = createFrameAnimation(HACKING_EFFECT_ANIMATION);
 const hackerScriptImages = createScriptImages(HACKER_SCRIPT_IMAGE_FILES, HACKER_SCRIPT_IMAGE_BASE_URL);
 const aiScriptImages = createScriptImages(AI_SCRIPT_IMAGE_FILES, AI_SCRIPT_IMAGE_BASE_URL);
@@ -256,17 +227,37 @@ function createNumberedFrameFiles(state, count) {
 }
 
 function createHackerImages() {
-  const animations = {};
-  for (const [state, animation] of Object.entries(HACKER_ANIMATIONS)) {
-    animations[state] = createFrameAnimation(animation);
+  const skins = {};
+  for (const [skinId, skin] of Object.entries(HACKER_SKINS)) {
+    const animations = {};
+    if (skin.animationType === "frames") {
+      for (const [state, config] of Object.entries(skin.animations)) {
+        animations[state] = createFrameAnimation({
+          files: createNumberedFrameFiles(config.directory, config.frameCount),
+          frameSeconds: config.frameSeconds,
+        }, skin.animationBaseUrl);
+      }
+    } else {
+      const imageCache = new Map();
+      for (const [state, src] of Object.entries(skin.animations)) {
+        let image = imageCache.get(src);
+        if (!image) {
+          image = new Image();
+          image.src = src;
+          imageCache.set(src, image);
+        }
+        animations[state] = { frames: [image], frameSeconds: [1], totalSeconds: 1, animatedGif: true };
+      }
+    }
+    skins[skinId] = animations;
   }
-  return animations;
+  return skins;
 }
 
-function createFrameAnimation(animation) {
+function createFrameAnimation(animation, baseUrl = HACKER_IMAGE_BASE_URL) {
   const frames = animation.files.map((file) => {
     const image = new Image();
-    const url = new URL(file, HACKER_IMAGE_BASE_URL);
+    const url = new URL(file, baseUrl);
     url.searchParams.set("v", ASSET_VERSION);
     image.src = url.href;
     return image;
@@ -3148,11 +3139,11 @@ export function initUI(callbacks) {
 
   function drawHackerSprite(ctx, h, isGhost, isHitFlashing, freezeAnimation = false) {
     const state = getHackerSpriteState(h);
-    const animation = hackerImages[state] || hackerImages.idle;
-    const image = getHackerAnimationFrame(animation, freezeAnimation);
+    const { animation, image, skin } = getRenderableHackerAnimation(state, freezeAnimation);
     if (!isImageReady(image)) return false;
 
-    const box = getHackerSpriteBox(h, state, image);
+    const crop = skin.sourceCrop?.[state];
+    const box = getHackerSpriteBox(h, state, image, skin, crop);
     const facing = h.facing || 1;
 
     ctx.save();
@@ -3167,7 +3158,11 @@ export function initUI(callbacks) {
     }
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(image, -box.w / 2, -box.h / 2, box.w, box.h);
+    if (crop) {
+      ctx.drawImage(image, crop.x, crop.y, crop.w, crop.h, -box.w / 2, -box.h / 2, box.w, box.h);
+    } else {
+      ctx.drawImage(image, -box.w / 2, -box.h / 2, box.w, box.h);
+    }
     ctx.restore();
 
     if (!isGhost && h.isSliding) {
@@ -3191,8 +3186,28 @@ export function initUI(callbacks) {
 
   function isHackerSpriteLoading(h) {
     const state = getHackerSpriteState(h);
-    const animation = hackerImages[state] || hackerImages.idle;
+    const skinId = getSelectedHackerSkin();
+    const animations = hackerImagesBySkin[skinId] || hackerImagesBySkin.classic;
+    const animation = animations?.[state] || animations?.idle;
     return Boolean(animation?.frames?.some(isImageLoading));
+  }
+
+  function getRenderableHackerAnimation(state, freezeAnimation = false) {
+    const skinId = getSelectedHackerSkin();
+    const skin = HACKER_SKINS[skinId] || HACKER_SKINS.classic;
+    const animations = hackerImagesBySkin[skin.id] || hackerImagesBySkin.classic;
+    const animation = animations?.[state] || animations?.idle;
+    const image = getHackerAnimationFrame(animation, freezeAnimation);
+    if (isImageReady(image)) return { animation, image, skin };
+
+    const fallbackSkin = HACKER_SKINS.classic;
+    const fallbackAnimations = hackerImagesBySkin.classic;
+    const fallbackAnimation = fallbackAnimations?.[state] || fallbackAnimations?.idle;
+    return {
+      animation: fallbackAnimation,
+      image: getHackerAnimationFrame(fallbackAnimation, freezeAnimation),
+      skin: fallbackSkin,
+    };
   }
 
   function getHackerAnimationFrame(animation, freezeAnimation = false) {
@@ -3226,9 +3241,10 @@ export function initUI(callbacks) {
     return "jumpAir";
   }
 
-  function getHackerSpriteBox(h, state, frame) {
-    const aspect = frame.width / frame.height || 1;
-    const height = getHackerSpriteHeight(h, state);
+  function getHackerSpriteBox(h, state, frame, skin = HACKER_SKINS.classic, crop = null) {
+    const aspect = crop ? crop.w / crop.h : frame.width / frame.height || 1;
+    const scale = Number(skin.renderScale?.[state]) || 1;
+    const height = getHackerSpriteHeight(h, state) * scale;
     const width = height * aspect;
     const groundY = h.y + h.h;
     return {

@@ -1631,16 +1631,37 @@ button.secondary {
 .lobby-skin-panel:not(.skin-list-view) {
   top: var(--skin-category-panel-top);
   width: min(346px, calc(100vw - 48px));
-  height: var(--skin-category-panel-height);
-  gap: 0;
+  height: calc(var(--skin-category-panel-height) + 42px);
+  gap: 6px;
   padding: 10px;
+}
+
+.lobby-skin-panel-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.lobby-skin-panel-tabs button {
+  min-height: 34px;
+  border: 1px solid rgba(24, 224, 255, 0.3);
+  border-radius: 5px;
+  background: rgba(5, 24, 37, 0.92);
+  color: #89aeba;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.lobby-skin-panel-tabs button.selected {
+  border-color: #27ffc8;
+  color: #eafff9;
 }
 
 .lobby-skin-categories {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
-  height: 100%;
+  min-height: 0;
 }
 
 .lobby-skin-category {
@@ -3483,11 +3504,17 @@ body:not(.lobby-active):not(.mobile-client) #restartBtn {
   border-radius: 6px;
 }
 
-.lobby-skin-start-button {
+.lobby-skin-select-actions {
   position: absolute;
   z-index: 4;
   right: clamp(20px, 3vw, 34px);
   bottom: 9px;
+  display: flex;
+  gap: 8px;
+}
+
+.lobby-skin-start-button,
+.lobby-skin-apply-button {
   width: 230px;
   min-width: 230px;
   height: 28px;
@@ -3501,6 +3528,19 @@ body:not(.lobby-active):not(.mobile-client) #restartBtn {
   box-shadow: 0 0 22px rgba(39, 255, 200, 0.24);
 }
 
+.lobby-skin-apply-button {
+  width: 120px;
+  min-width: 120px;
+  border-color: rgba(255, 218, 115, 0.74);
+  background: rgba(62, 45, 20, 0.92);
+  color: #ffe899;
+}
+
+.lobby-skin-apply-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .lobby-skin-start-button:hover,
 .lobby-skin-start-button:focus-visible {
   border-color: #e9f8ff;
@@ -3509,6 +3549,33 @@ body:not(.lobby-active):not(.mobile-client) #restartBtn {
 
 .lobby-skin-select-header h2 {
   margin-bottom: 10px;
+}
+
+.lobby-skin-tabs {
+  width: min(1060px, 100%);
+  display: flex;
+  gap: 8px;
+  margin: -8px auto 0;
+}
+
+.lobby-skin-tabs button {
+  min-height: 42px;
+  padding: 8px 18px;
+  border: 1px solid rgba(24, 224, 255, 0.38);
+  border-radius: 6px;
+  background: rgba(5, 24, 37, 0.92);
+  color: #8fb9c7;
+  font-weight: 900;
+}
+
+.lobby-skin-tabs button.selected {
+  border-color: #27ffc8;
+  color: #eafff9;
+  box-shadow: 0 0 18px rgba(39, 255, 200, 0.2);
+}
+
+.lobby-skin-select-screen.is-ai-skin-view .lobby-skin-tabs {
+  display: none;
 }
 
 .lobby-skin-select-carousel {
@@ -3774,6 +3841,31 @@ body:not(.lobby-active):not(.mobile-client) #restartBtn {
 
 .lobby-skin-select-card.locked {
   filter: grayscale(0.65);
+}
+
+.lobby-skin-select-card.claimable {
+  border-color: rgba(255, 218, 115, 0.62);
+  filter: saturate(0.72);
+}
+
+.lobby-skin-select-card.equipped::after {
+  content: "현재 적용";
+  position: absolute;
+  z-index: 6;
+  top: 10px;
+  right: 10px;
+  padding: 5px 8px;
+  border: 1px solid #27ffc8;
+  border-radius: 999px;
+  background: rgba(3, 16, 24, 0.92);
+  color: #27ffc8;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.lobby-skin-card-preview[data-preview-skin^="lobby-"] img {
+  object-fit: cover;
+  transform: none;
 }
 
 .lobby-stage-select-header {

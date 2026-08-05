@@ -1,5 +1,7 @@
 import { addDailyMissionUsb } from "./dailyMissionRepository.js";
 import { SHOP_ITEMS, grantShopItem } from "./shopRepository.js";
+import { grantHackerSkin, grantLobbySkin } from "./localGameRepository.js?v=20260806-summer-season";
+import { SUMMER_SEASON_ID } from "../skinRegistry.js?v=20260806-summer-season";
 
 const STORAGE_KEY = "traceProtocolSeasonPass";
 const SCHEMA_VERSION = 1;
@@ -15,8 +17,26 @@ const ITEM_REWARDS = {
 };
 
 function createReward(level, track) {
+  if (track === "premium" && level === 10) {
+    return {
+      type: "characterSkin",
+      rewardId: "summerOverride",
+      name: "Summer Override",
+      icon: "./assets/images/Summer/concepart.png",
+      seasonId: SUMMER_SEASON_ID,
+    };
+  }
+  if (track === "premium" && level === 15) {
+    return {
+      type: "lobbySkin",
+      rewardId: "summerSeasonLobby",
+      name: "Summer Season Lobby",
+      icon: "./assets/images/Summer/Summer_season_Lobby.png",
+      seasonId: SUMMER_SEASON_ID,
+    };
+  }
   const itemLevelMap = track === "premium"
-    ? { 5: "attackTime", 10: "shieldModule", 15: "energyMax", 20: "revive", 25: "shieldModule", 30: "energyMax" }
+    ? { 5: "attackTime", 20: "revive", 25: "shieldModule", 30: "energyMax" }
     : { 10: "attackTime", 20: "shieldModule", 30: "revive" };
   const itemId = itemLevelMap[level];
   if (itemId) return { type: "item", ...ITEM_REWARDS[itemId] };
@@ -69,8 +89,14 @@ function normalizeState(stored) {
 
 export function getSeasonPassState() {
   const state = normalizeState(readState());
+  reconcileSeasonalOwnership(state);
   if (!readState()) writeState(state);
   return state;
+}
+
+function reconcileSeasonalOwnership(state) {
+  if (state.claimed?.["premium-10"]) grantHackerSkin("summerOverride");
+  if (state.claimed?.["premium-15"]) grantLobbySkin("summerSeasonLobby");
 }
 
 function dispatch(state, eventName = "protocol:season-pass-update") {
@@ -119,6 +145,8 @@ export function claimSeasonPassReward(level, track = "free") {
   }
   if (reward.type === "usb") addDailyMissionUsb(reward.amount);
   if (reward.type === "item") grantShopItem(reward.itemId);
+  if (reward.type === "characterSkin") grantHackerSkin(reward.rewardId);
+  if (reward.type === "lobbySkin") grantLobbySkin(reward.rewardId);
   state.claimed[claimKey] = true;
   writeState(state);
   dispatch(state);
