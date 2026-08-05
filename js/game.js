@@ -39,6 +39,7 @@ import { consumeShopItem, getShopInventory } from "./repositories/shopRepository
 
 const BGM_TRACKS = {
   play: "neon-circuit-drift.mp3",
+  darkWeb: "Neural Defense Grid.mp3",
   ending: "clear-bgm.mp3",
 };
 const GUIDE_BUBBLE_SKIP_STORAGE_KEY = "traceProtocolSkipGuideBubbles";
@@ -109,7 +110,7 @@ setupLandscapeOrientationLock();
 
 function playGameplayBgmForTurn(turn) {
   if (turn === TURN.ATTACK || turn === TURN.DEFENSE_BUILD || turn === TURN.DEFENSE_REPLAY) {
-    playBgm(BGM_TRACKS.play, { force: true });
+    playBgm(game?.mode === "darkweb" ? BGM_TRACKS.darkWeb : BGM_TRACKS.play, { force: true });
     return;
   }
 

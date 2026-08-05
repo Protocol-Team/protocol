@@ -270,7 +270,7 @@ function playAudioElement(audio, src) {
 function preloadBgm() {
   if (bgmPreloaded) return;
   bgmPreloaded = true;
-  for (const src of ["neon-protocol.mp3", "neon-circuit-drift.mp3", "clear-bgm.mp3"]) {
+  for (const src of ["neon-protocol.mp3", "neon-circuit-drift.mp3", "Neural Defense Grid.mp3", "clear-bgm.mp3"]) {
     if (src === currentBgmSrc || src === pendingBgmSrc) continue;
     getBgmPlayer(src).load();
   }

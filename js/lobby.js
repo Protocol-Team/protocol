@@ -64,6 +64,14 @@ const SELECTABLE_AI_SKINS = [
     lobbyPreview: { scale: 1.35, offsetY: -23, focusY: 48, originY: 48 },
     owned: false,
   },
+  {
+    id: "glitch",
+    name: "픽셀 속 해안가",
+    desc: "화면 속 뜨거운 피서",
+    preview: "./assets/images/AI_skin_glitch/preview.png",
+    lobbyPreview: { scale: 1.4, offsetY: -20, focusY: 30, originY: 30 },
+    owned: true,
+  },
 ];
 const SELECTABLE_HACKER_SKINS = [
   {

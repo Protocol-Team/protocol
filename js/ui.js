@@ -64,6 +64,7 @@ const STAGE_IMAGE_FILES = {
   tile3: "tile3.png",
   checkpoint1: "checkpoint-.png",
   checkpoint2: "checkpoint2-.png",
+  dataCore: "data_core_terminal_pulse_transparent.png",
 };
 const STAGE_BACKGROUNDS = {
   default: "stage",
@@ -86,6 +87,7 @@ const HACKER_IMAGE_BASE_URL = new URL("../assets/images/hacker_new_frames/", imp
 const HACKER_SCRIPT_IMAGE_BASE_URL = new URL("../assets/images/hacker_script/", import.meta.url);
 const AI_SCRIPT_IMAGE_BASE_URL = new URL("../assets/images/AI_script/", import.meta.url);
 const AI_ANDROID_SCRIPT_IMAGE_BASE_URL = new URL("../assets/images/AI_skin1/", import.meta.url);
+const AI_GLITCH_SCRIPT_IMAGE_BASE_URL = new URL("../assets/images/AI_skin_glitch/", import.meta.url);
 const GUIDE_BUBBLE_SKIP_STORAGE_KEY = "traceProtocolSkipGuideBubbles";
 const AI_SCRIPT_SKINS = {
   classic: {
@@ -106,6 +108,16 @@ const AI_SCRIPT_SKINS = {
       error: "ai_npc1_error.gif",
       eyes_closed: "ai_npc1_eye_close.png",
       happy: "ai_npc1_smile.gif",
+    },
+  },
+  glitch: {
+    imageBaseUrl: AI_GLITCH_SCRIPT_IMAGE_BASE_URL,
+    className: "ai-skin-glitch",
+    files: {
+      idle: "idle.png",
+      error: "error.png",
+      eyes_closed: "eyes_closed.png",
+      happy: "happy.png",
     },
   },
 };
@@ -2215,7 +2227,7 @@ export function initUI(callbacks) {
     const rect = getRenderableRect(core);
     if (!rect) return;
 
-    if (drawCheckpointCore(ctx, rect)) return;
+    if (drawDataCorePortal(ctx, rect)) return;
 
     ctx.save();
     ctx.fillStyle = "#27ffc8";
@@ -2229,6 +2241,26 @@ export function initUI(callbacks) {
     ctx.font = "12px monospace";
     ctx.fillText("CORE", rect.x + 5, rect.y - 8);
     ctx.restore();
+  }
+
+  function drawDataCorePortal(ctx, rect) {
+    const image = stageImages.dataCore;
+    if (!isImageReady(image)) return false;
+
+    const aspect = image.naturalWidth / image.naturalHeight || 0.67;
+    const visualH = Math.max((rect.h + 56) * 0.8, 106);
+    const visualW = Math.max(rect.w * 0.8, visualH * aspect);
+    const x = rect.x + rect.w / 2 - visualW / 2;
+    const y = rect.y + rect.h - visualH;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.shadowColor = "rgba(24, 224, 255, 0.72)";
+    ctx.shadowBlur = 20;
+    ctx.drawImage(image, x, y, visualW, visualH);
+    ctx.restore();
+    return true;
   }
 
   function drawCheckpointCore(ctx, rect) {
