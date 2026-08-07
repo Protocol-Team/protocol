@@ -16,7 +16,7 @@ import {
   SAMPLE_STEP,
   pickStageOneLayoutPresetId,
 } from "./data.js?v=20260723-shield-module";
-import { createHacker, updateAttack, activateHack } from "./player.js?v=20260807-stair-wall-run";
+import { createHacker, updateAttack, activateHack } from "./player.js?v=20260808-chokepoint-wall-climb";
 import { initUI } from "./ui.js?v=20260807-wall-run-motion";
 import { isAttackStage, getDefenseBudget, getStageDefinition, createPlatforms, createBaseHazards, createTrapSlots } from "./stage.js?v=20260807-entry-step-lift";
 import {
