@@ -13,7 +13,7 @@ import {
   saveSelectedSkin,
   saveSelectedHackerSkin,
   saveSelectedLobbySkin,
-} from "./repositories/localGameRepository.js?v=20260806-summer-season";
+} from "./repositories/localGameRepository.js?v=20260807-local-qa-season-unlock";
 import { HACKER_SKINS, LOBBY_SKINS } from "./skinRegistry.js?v=20260807-skin-reward-copy";
 import {
   getDailyMissionState,
