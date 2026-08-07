@@ -29,7 +29,7 @@ import {
 } from "./trap.js?v=20260729-camera-triangle-tutorial-v2";
 import { startReplay as startReplayMode, updateDefenseReplay } from "./replay.js?v=20260807-wall-run-motion";
 import { playBgm, playLobbyBgm, playSfx, stopAllSfx, stopBgm, stopSfx } from "./audio.js?v=20260724-stage-effect-cleanup";
-import { initLobby } from "./lobby.js?v=20260806-summer-season";
+import { initLobby } from "./lobby.js?v=20260807-equipped-skin-copy";
 import {
   recordDailyMissionEvent,
   recordStageClearForDailyMissions,

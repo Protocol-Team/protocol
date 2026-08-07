@@ -28,7 +28,7 @@ export const HACKER_SKINS = Object.freeze({
   summerOverride: {
     id: "summerOverride",
     name: "Summer Override",
-    desc: "프리미엄 패스 Lv.10 시즌 스킨",
+    desc: "프리미엄 패스\nLv.10 보상 스킨",
     category: "seasonal",
     seasonId: SUMMER_SEASON_ID,
     unlockSource: "premium-pass-level-10",
@@ -68,7 +68,7 @@ export const LOBBY_SKINS = Object.freeze({
   summerSeasonLobby: {
     id: "summerSeasonLobby",
     name: "Summer Season Lobby",
-    desc: "프리미엄 패스 Lv.15 시즌 로비",
+    desc: "프리미엄 패스 Lv.15 보상 로비",
     category: "seasonal",
     seasonId: SUMMER_SEASON_ID,
     unlockSource: "premium-pass-level-15",
