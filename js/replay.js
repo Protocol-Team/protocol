@@ -40,6 +40,7 @@ export function createReplayHacker(game) {
     landingPoseTime: first.landingPoseTime || 0,
     wallGrab: Boolean(first.wallGrab),
     wallSide: first.wallSide || 0,
+    movingAgainstWall: Boolean(first.movingAgainstWall),
     hp: 3,
     glitchTime: 0,
     trapCooldowns: new Map(),
@@ -66,6 +67,7 @@ export function recordHacker(game, dt) {
     landingPoseTime: h.landingPoseTime || 0,
     wallGrab: Boolean(h.wallGrab),
     wallSide: h.wallSide || 0,
+    movingAgainstWall: Boolean(h.movingAgainstWall),
     shield: h.shield,
     energyUsed: game.metrics.energyUsed,
   });
@@ -143,6 +145,7 @@ export function updateDefenseReplay(game, dt, flashLog, endStage) {
   }
   r.wallGrab = Boolean(sample.wallGrab);
   r.wallSide = sample.wallSide || 0;
+  r.movingAgainstWall = Boolean(sample.movingAgainstWall);
   game.metrics.energyUsed = Math.max(game.metrics.energyUsed, sample.energyUsed || 0);
 
   checkDefenseTraps(r, game, flashLog);

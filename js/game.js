@@ -16,9 +16,9 @@ import {
   SAMPLE_STEP,
   pickStageOneLayoutPresetId,
 } from "./data.js?v=20260723-shield-module";
-import { createHacker, updateAttack, activateHack } from "./player.js?v=20260724-right-angle-wall-climb";
-import { initUI } from "./ui.js?v=20260806-summer-season";
-import { isAttackStage, getDefenseBudget, getStageDefinition, createPlatforms, createBaseHazards, createTrapSlots } from "./stage.js?v=20260724-shared-attack-hazards";
+import { createHacker, updateAttack, activateHack } from "./player.js?v=20260807-stair-wall-run";
+import { initUI } from "./ui.js?v=20260807-wall-run-motion";
+import { isAttackStage, getDefenseBudget, getStageDefinition, createPlatforms, createBaseHazards, createTrapSlots } from "./stage.js?v=20260807-entry-step-lift";
 import {
   placeTrapAtSlot,
   removeTrapAtPosition,
@@ -27,9 +27,9 @@ import {
   getAllowedRotation,
   getTrapCost,
 } from "./trap.js?v=20260729-camera-triangle-tutorial-v2";
-import { startReplay as startReplayMode, updateDefenseReplay } from "./replay.js?v=20260724-stage-effect-cleanup";
+import { startReplay as startReplayMode, updateDefenseReplay } from "./replay.js?v=20260807-wall-run-motion";
 import { playBgm, playLobbyBgm, playSfx, stopAllSfx, stopBgm, stopSfx } from "./audio.js?v=20260724-stage-effect-cleanup";
-import { initLobby } from "./lobby.js?v=20260806-summer-season";
+import { initLobby } from "./lobby.js?v=20260807-local-qa-season-unlock";
 import {
   recordDailyMissionEvent,
   recordStageClearForDailyMissions,

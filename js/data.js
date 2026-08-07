@@ -325,7 +325,7 @@ export const stages = [
       {
         id: "stage-1-platform-start",
         x: 250,
-        y: 360,
+        y: 342,
         w: 150,
         h: 18,
         role: "movement-step",
@@ -477,7 +477,7 @@ export const stages = [
       {
         id: "stage-2-platform-entry-sensor",
         x: 245,
-        y: 360,
+        y: 342,
         w: 160,
         h: 18,
         role: "entry-analysis",
@@ -592,7 +592,7 @@ export const STAGE_ONE_LAYOUT_PRESETS = [
       {
         id: "stage-1-a-entry-step",
         x: 240,
-        y: 366,
+        y: 318,
         w: 144,
         h: 48,
         role: "entry-step",
@@ -730,7 +730,7 @@ export const STAGE_ONE_LAYOUT_PRESETS = [
       {
         id: "stage-1-b-entry-step",
         x: 240,
-        y: 366,
+        y: 318,
         w: 144,
         h: 48,
         role: "entry-step",
@@ -868,7 +868,7 @@ export const STAGE_ONE_LAYOUT_PRESETS = [
       {
         id: "stage-1-c-entry-step",
         x: 240,
-        y: 366,
+        y: 318,
         w: 144,
         h: 48,
         role: "entry-step",
@@ -1015,7 +1015,7 @@ function createDarkWebBaseLayout(mapId) {
     },
     platforms: [
       { id: `darkweb-${mapId}-ground`, x: 0, y: 462, w: 1200, h: 78, role: "main-route", mapObject: "research-lab-floor" },
-      { id: `darkweb-${mapId}-entry-step`, x: 240, y: 366, w: 144, h: 48, role: "entry-step", mapObject: "server-rack-step" },
+      { id: `darkweb-${mapId}-entry-step`, x: 240, y: 318, w: 144, h: 48, role: "entry-step", mapObject: "server-rack-step" },
       { id: `darkweb-${mapId}-low-bypass`, x: 384, y: 414, w: 144, h: 48, role: "low-bypass", mapObject: "cooling-unit" },
       { id: `darkweb-${mapId}-security-pillar`, x: 576, y: 174, w: 48, h: 192, role: "chokepoint-wall", mapObject: "security-pillar" },
       { id: `darkweb-${mapId}-wall-jump-route`, x: 624, y: 222, w: 144, h: 48, role: "wall-jump-fast-route", mapObject: "data-overpass" },
@@ -1078,7 +1078,7 @@ const DARK_WEB_CORE_LAYOUT = {
   },
   platforms: [
     { id: "darkweb-5-ground", x: 0, y: 462, w: 1200, h: 78, role: "main-route", mapObject: "research-lab-floor" },
-    { id: "darkweb-5-entry-terrace", x: 144, y: 400, w: 144, h: 62, role: "entry-step", mapObject: "server-rack-step" },
+    { id: "darkweb-5-entry-terrace", x: 144, y: 338, w: 144, h: 62, role: "entry-step", mapObject: "server-rack-step" },
     { id: "darkweb-5-upper-left", x: 310, y: 330, w: 150, h: 48, role: "wall-jump-fast-route", mapObject: "data-bridge" },
     { id: "darkweb-5-signal-tower", x: 500, y: 170, w: 52, h: 244, role: "chokepoint-wall", mapObject: "ai-core-pillar" },
     { id: "darkweb-5-upper-middle", x: 552, y: 244, w: 150, h: 48, role: "fast-exit", mapObject: "data-overpass" },

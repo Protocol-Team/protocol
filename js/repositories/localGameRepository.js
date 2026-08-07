@@ -11,6 +11,11 @@ const SELECTED_LOBBY_SKIN_STORAGE_KEY = "traceProtocolLobbySkin";
 const DEFAULT_BEST_STAGE = 0;
 const DEFAULT_PURCHASED_SKINS = [];
 const DEFAULT_SELECTED_SKIN = "classic";
+// Temporary QA unlocks are exposed only by local development servers such as VS Code Go Live.
+const LOCAL_DEVELOPMENT_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
+const IS_LOCAL_DEVELOPMENT = LOCAL_DEVELOPMENT_HOSTS.has(globalThis.location?.hostname || "");
+const QA_UNLOCKED_HACKER_SKINS = IS_LOCAL_DEVELOPMENT ? ["summerOverride"] : [];
+const QA_UNLOCKED_LOBBY_SKINS = IS_LOCAL_DEVELOPMENT ? ["summerSeasonLobby"] : [];
 
 function readStorageValue(key) {
   try {
@@ -101,9 +106,13 @@ export function saveSelectedHackerSkin(skinId) {
 export function getOwnedHackerSkins() {
   try {
     const stored = normalizeSkinIds(JSON.parse(readStorageValue(OWNED_HACKER_SKINS_STORAGE_KEY) || "[]"));
-    return [...new Set([DEFAULT_SELECTED_SKIN, ...stored.filter(isValidHackerSkinId)])];
+    return [...new Set([
+      DEFAULT_SELECTED_SKIN,
+      ...QA_UNLOCKED_HACKER_SKINS,
+      ...stored.filter(isValidHackerSkinId),
+    ])];
   } catch {
-    return [DEFAULT_SELECTED_SKIN];
+    return [DEFAULT_SELECTED_SKIN, ...QA_UNLOCKED_HACKER_SKINS];
   }
 }
 
@@ -117,9 +126,13 @@ export function grantHackerSkin(skinId) {
 export function getOwnedLobbySkins() {
   try {
     const stored = normalizeSkinIds(JSON.parse(readStorageValue(OWNED_LOBBY_SKINS_STORAGE_KEY) || "[]"));
-    return [...new Set(["default", ...stored.filter(isValidLobbySkinId)])];
+    return [...new Set([
+      "default",
+      ...QA_UNLOCKED_LOBBY_SKINS,
+      ...stored.filter(isValidLobbySkinId),
+    ])];
   } catch {
-    return ["default"];
+    return ["default", ...QA_UNLOCKED_LOBBY_SKINS];
   }
 }
 

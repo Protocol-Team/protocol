@@ -1,7 +1,7 @@
 ﻿// stage.js
 // 책임: 스테이지 로딩과 맵 생성만 담당합니다.
 
-import { GROUND_Y, INFINITE_STAGE_START, LASER_BASE_LENGTH, WIDTH, getDarkWebStageByMapId, getFirewallBlockTime, getStageById } from "./data.js?v=20260720-defense-ux";
+import { GROUND_Y, INFINITE_STAGE_START, LASER_BASE_LENGTH, WIDTH, getDarkWebStageByMapId, getFirewallBlockTime, getStageById } from "./data.js?v=20260807-entry-step-lift";
 import {
   FLOOR_TRAP_HEIGHT,
   FLOOR_TRAP_SURFACE_LIFT,
@@ -125,7 +125,7 @@ function createFallbackPlatforms() {
     {
       id: "fallback-entry-step",
       x: 240,
-      y: 366,
+      y: 318,
       w: 144,
       h: FALLBACK_PLATFORM_TILE_HEIGHT,
       role: "entry-step",
