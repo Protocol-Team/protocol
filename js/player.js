@@ -834,7 +834,14 @@ function getPlatformWallHeight(platform) {
 
 function canGrabPlatformWall(platform, platforms) {
   const touchesGround = Number(platform?.y) + Number(platform?.h) >= GROUND_Y - 1;
-  return !touchesGround && !isConnectedStairStep(platform, platforms);
+  if (touchesGround) return false;
+
+  // Chokepoint walls are deliberate wall-climb surfaces. Their upper edge can
+  // meet a route platform at stair height, but that must not turn the pillar
+  // itself into a stair step (for example, the Stage 1 center pillar).
+  if (platform?.role === "chokepoint-wall") return true;
+
+  return !isConnectedStairStep(platform, platforms);
 }
 
 function isConnectedStairStep(platform, platforms) {
