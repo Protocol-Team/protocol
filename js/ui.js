@@ -3231,7 +3231,7 @@ export function initUI(callbacks) {
     if (h.isSliding) return "slide";
     if ((h.landingPoseTime || 0) > 0) return "jumpLanding";
     if (!h.onGround || Math.abs(h.vy || 0) > 20) return getHackerJumpSpriteState(h);
-    if (Math.abs(h.vx || 0) > 12) return "run";
+    if (h.movingAgainstWall || Math.abs(h.vx || 0) > 12) return "run";
     return "idle";
   }
 

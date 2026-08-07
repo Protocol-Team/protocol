@@ -7,6 +7,7 @@ import {
   getStageTime,
   getFirewallBlockTime,
   getShockSlowTime,
+  GROUND_Y,
   SHOCK_SLOW_MULTIPLIER,
   clamp,
   rectsOverlap,
@@ -19,7 +20,7 @@ import {
   isEntityInCameraView,
   tickBaseHazardTimers,
 } from "./trap.js?v=20260724-camera-hack-body";
-import { recordHacker } from "./replay.js?v=20260722-single-camera-boost";
+import { recordHacker } from "./replay.js?v=20260807-wall-run-motion";
 import { playSfx, stopSfx } from "./audio.js?v=20260724-stage-effect-cleanup";
 
 const ATTACK_INPUT_CODES = new Set([
@@ -45,6 +46,8 @@ const WALL_JUMP_BUFFER_TIME = 0.12;
 const WALL_MIN_CONTACT_HEIGHT = 16;
 const WALL_LEDGE_MANTLE_HEIGHT = 6;
 const WALL_LEDGE_INSET = 2;
+const STAIR_STEP_HEIGHT = 48;
+const STAIR_STEP_TOLERANCE = 2;
 const HACKER_STAND_HEIGHT = 54;
 const HACKER_SLIDE_HEIGHT = 30;
 const SLIDE_POSE_DURATION = 0.16;
@@ -90,6 +93,7 @@ export function createHacker(game) {
     wallContactTimer: 0,
     wallJumpInputLock: false,
     wallJumpDashTimer: 0,
+    movingAgainstWall: false,
 
     hp: 3,
     maxHp: 3,
@@ -533,6 +537,7 @@ function moveAndCollide(entity, dt, game, keys) {
   const previousWallSide = entity.wallSide || entity.wallStickSide || 0;
   entity.wallGrab = false;
   entity.wallSide = 0;
+  entity.movingAgainstWall = false;
 
   const previousX = entity.x;
   entity.x += entity.vx * dt;
@@ -541,11 +546,17 @@ function moveAndCollide(entity, dt, game, keys) {
   if (edgeWallSide) {
     grabWall(entity, edgeWallSide);
   }
-  collidePlatformWallsX(entity, previousX, game, holdingLeft, holdingRight);
+  const blockedByGroundedPlatform = collidePlatformWallsX(
+    entity,
+    previousX,
+    game,
+    holdingLeft,
+    holdingRight
+  );
   collideClosedFirewallsX(entity, previousX, game);
   grabNearbyForwardWall(entity, game, holdingLeft, holdingRight);
 
-  const wallSide = entity.wallSide || previousWallSide;
+  const wallSide = blockedByGroundedPlatform ? 0 : entity.wallSide || previousWallSide;
   let climbedOntoLedge = holdingUp && wallSide &&
     tryClimbOntoPlatformLedge(entity, game, wallSide);
 
@@ -651,6 +662,7 @@ function tryClimbOntoPlatformLedge(entity, game, wallSide) {
   const feetY = entity.y + entity.h;
 
   for (const platform of game.platforms || []) {
+    if (!canGrabPlatformWall(platform, game.platforms)) continue;
     const touchesFace = wallSide > 0
       ? Math.abs(entity.x + entity.w - platform.x) <= WALL_AUTO_GRAB_DISTANCE
       : Math.abs(entity.x - (platform.x + platform.w)) <= WALL_AUTO_GRAB_DISTANCE;
@@ -714,38 +726,52 @@ function collidePlatformWallsX(entity, previousX, game, holdingLeft, holdingRigh
       previousBox.x >= wallBox.x + wallBox.w &&
       entity.x <= wallBox.x + wallBox.w;
     const alreadyOverlapping = rectsOverlap(entity, wallBox);
+    const canGrabWall = canGrabPlatformWall(platform, game.platforms);
 
     if (hitLeftFace) {
       entity.x = wallBox.x - entity.w;
       entity.vx = Math.min(0, entity.vx);
-      grabWall(entity, 1);
-      break;
+      if (canGrabWall) grabWall(entity, 1);
+      else markMovingAgainstWall(entity, 1, holdingLeft, holdingRight);
+      return !canGrabWall;
     } else if (hitRightFace) {
       entity.x = wallBox.x + wallBox.w;
       entity.vx = Math.max(0, entity.vx);
-      grabWall(entity, -1);
-      break;
+      if (canGrabWall) grabWall(entity, -1);
+      else markMovingAgainstWall(entity, -1, holdingLeft, holdingRight);
+      return !canGrabWall;
     } else if (alreadyOverlapping) {
-      resolvePlatformWallOverlapX(entity, previousBox, wallBox, holdingLeft, holdingRight);
-      break;
+      const resolvedSide = resolvePlatformWallOverlapX(entity, previousBox, wallBox, canGrabWall);
+      if (!canGrabWall) markMovingAgainstWall(entity, resolvedSide, holdingLeft, holdingRight);
+      return !canGrabWall;
     }
   }
+
+  return false;
 }
 
-function resolvePlatformWallOverlapX(entity, previousBox, wallBox, holdingLeft, holdingRight) {
+function resolvePlatformWallOverlapX(entity, previousBox, wallBox, canGrabWall) {
   const previousCenter = previousBox.x + previousBox.w / 2;
   const wallCenter = wallBox.x + wallBox.w / 2;
 
   if (previousCenter <= wallCenter) {
     entity.x = wallBox.x - entity.w;
     entity.vx = Math.min(0, entity.vx);
-    grabWall(entity, 1);
-    return;
+    if (canGrabWall) grabWall(entity, 1);
+    else clearWallGrabState(entity);
+    return 1;
   }
 
   entity.x = wallBox.x + wallBox.w;
   entity.vx = Math.max(0, entity.vx);
-  grabWall(entity, -1);
+  if (canGrabWall) grabWall(entity, -1);
+  else clearWallGrabState(entity);
+  return -1;
+}
+
+function markMovingAgainstWall(entity, wallSide, holdingLeft, holdingRight) {
+  clearWallGrabState(entity);
+  entity.movingAgainstWall = isHoldingTowardWall(wallSide, holdingLeft, holdingRight);
 }
 
 function grabNearbyForwardWall(entity, game, holdingLeft, holdingRight) {
@@ -758,6 +784,7 @@ function grabNearbyForwardWall(entity, game, holdingLeft, holdingRight) {
       : entity.facing || 1;
 
   for (const platform of game.platforms || []) {
+    if (!canGrabPlatformWall(platform, game.platforms)) continue;
     const wallBox = getPlatformWallBox(platform);
     const minimumContactHeight = entity.wallClimbing ? 1 : WALL_MIN_CONTACT_HEIGHT;
     if (getVerticalOverlap(entity, wallBox) < minimumContactHeight) continue;
@@ -803,6 +830,29 @@ function getPlatformWallBox(platform) {
 
 function getPlatformWallHeight(platform) {
   return Math.max(platform.h, 48);
+}
+
+function canGrabPlatformWall(platform, platforms) {
+  const touchesGround = Number(platform?.y) + Number(platform?.h) >= GROUND_Y - 1;
+  return !touchesGround && !isConnectedStairStep(platform, platforms);
+}
+
+function isConnectedStairStep(platform, platforms) {
+  if (!platform || !Array.isArray(platforms)) return false;
+
+  return platforms.some((lowerPlatform) => {
+    if (!lowerPlatform || lowerPlatform === platform) return false;
+
+    const stepHeight = Number(lowerPlatform.y) - Number(platform.y);
+    if (Math.abs(stepHeight - STAIR_STEP_HEIGHT) > STAIR_STEP_TOLERANCE) return false;
+
+    const platformLeft = Number(platform.x);
+    const platformRight = platformLeft + Number(platform.w);
+    const lowerLeft = Number(lowerPlatform.x);
+    const lowerRight = lowerLeft + Number(lowerPlatform.w);
+    return platformRight >= lowerLeft - STAIR_STEP_TOLERANCE &&
+      lowerRight >= platformLeft - STAIR_STEP_TOLERANCE;
+  });
 }
 
 function grabWall(entity, side) {
