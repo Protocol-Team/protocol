@@ -1,6 +1,6 @@
 import { addDailyMissionUsb } from "./dailyMissionRepository.js";
 import { SHOP_ITEMS, grantShopItem } from "./shopRepository.js";
-import { grantHackerSkin, grantLobbySkin } from "./localGameRepository.js?v=20260806-summer-season";
+import { grantAiSkin, grantHackerSkin, grantLobbySkin } from "./localGameRepository.js?v=20260808-pixel-coast-reward";
 import { SUMMER_SEASON_ID } from "../skinRegistry.js?v=20260806-summer-season";
 
 const STORAGE_KEY = "traceProtocolSeasonPass";
@@ -35,8 +35,17 @@ function createReward(level, track) {
       seasonId: SUMMER_SEASON_ID,
     };
   }
+  if (track === "premium" && level === 20) {
+    return {
+      type: "aiSkin",
+      rewardId: "glitch",
+      name: "픽셀 속 해안가",
+      icon: "./assets/images/AI_skin_glitch/preview.png",
+      seasonId: SUMMER_SEASON_ID,
+    };
+  }
   const itemLevelMap = track === "premium"
-    ? { 5: "attackTime", 20: "revive", 25: "shieldModule", 30: "energyMax" }
+    ? { 5: "attackTime", 25: "shieldModule", 30: "energyMax" }
     : { 10: "attackTime", 20: "shieldModule", 30: "revive" };
   const itemId = itemLevelMap[level];
   if (itemId) return { type: "item", ...ITEM_REWARDS[itemId] };
@@ -97,6 +106,7 @@ export function getSeasonPassState() {
 function reconcileSeasonalOwnership(state) {
   if (state.claimed?.["premium-10"]) grantHackerSkin("summerOverride");
   if (state.claimed?.["premium-15"]) grantLobbySkin("summerSeasonLobby");
+  if (state.claimed?.["premium-20"]) grantAiSkin("glitch");
 }
 
 function dispatch(state, eventName = "protocol:season-pass-update") {
@@ -147,6 +157,7 @@ export function claimSeasonPassReward(level, track = "free") {
   if (reward.type === "item") grantShopItem(reward.itemId);
   if (reward.type === "characterSkin") grantHackerSkin(reward.rewardId);
   if (reward.type === "lobbySkin") grantLobbySkin(reward.rewardId);
+  if (reward.type === "aiSkin") grantAiSkin(reward.rewardId);
   state.claimed[claimKey] = true;
   writeState(state);
   dispatch(state);

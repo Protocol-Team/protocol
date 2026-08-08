@@ -9,7 +9,7 @@ import {
   getShockDelay,
   getDefenseObjectiveItems,
   rectsOverlap,
-} from "./data.js?v=20260722-single-camera-boost";
+} from "./data.js?v=20260808-darkweb-objectives";
 import {
   getTrapHitbox,
   getOrientedTrapBox,
@@ -17,7 +17,7 @@ import {
   isEntityInCameraView,
   empowerCameraTargetsByPlacementOrder,
   tickPlacedTrapTimers,
-} from "./trap.js?v=20260724-camera-placement-order";
+} from "./trap.js?v=20260808-visible-defense-slots";
 import { playSfx, stopSfx } from "./audio.js?v=20260724-stage-effect-cleanup";
 
 const REPLAY_PLAYBACK_SPEED = 1.5;

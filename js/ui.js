@@ -11,7 +11,7 @@ import {
   getShockDelay,
   getShockSlowTime,
   SHOCK_SLOW_MULTIPLIER,
-} from "./data.js?v=20260723-shield-module";
+} from "./data.js?v=20260808-darkweb-objectives";
 import {
   CAMERA_W,
   getCameraHazardBox,
@@ -19,7 +19,7 @@ import {
   getCameraBodyBoxFromBox,
   getCameraEmpowerAssignments,
   getOrientedTrapBox,
-} from "./trap.js?v=20260729-camera-triangle-tutorial-v2";
+} from "./trap.js?v=20260808-visible-defense-slots";
 import {
   getBackgroundBgmEnabled,
   getBgmVolume,
@@ -974,7 +974,7 @@ export function initUI(callbacks) {
       return "아래 필수 조건을 모두 달성해 보안을 강화";
     }
 
-    return getObjective(game.stage);
+    return getObjective(game.stage, game);
   }
 
   function updateTrapTooltips(game) {

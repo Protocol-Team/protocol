@@ -1241,8 +1241,8 @@ export function getStageTime(stage) {
   return Math.max(24, 40 - Math.floor((stage - INFINITE_STAGE_START) * 1.2));
 }
 
-export function getObjective(stage) {
-  const defenseObjective = getDefenseObjective(stage);
+export function getObjective(stage, game = null) {
+  const defenseObjective = getDefenseObjective(stage, game);
   if (defenseObjective) return "수비 목표 확인";
 
   const stageData = getStageById(stage);
@@ -1260,8 +1260,15 @@ export function getObjective(stage) {
   return "무한 모드: 코어 탈취";
 }
 
-export function getDefenseObjective(stage) {
+export function getDefenseObjective(stage, game = null) {
   if (stage % 2 === 1) return null;
+
+  if (game?.mode === "darkweb") {
+    const cache = game.darkWeb?.defenseObjectivesByStage;
+    const key = getDefenseObjectiveCacheKey(stage, game);
+    const generated = cache instanceof Map ? cache.get(key) : null;
+    if (generated) return normalizeDefenseObjective(cloneDefenseObjective(generated));
+  }
 
   const objective = DEFENSE_OBJECTIVES[stage];
   if (objective) return normalizeDefenseObjective(cloneDefenseObjective(objective));
@@ -1303,6 +1310,14 @@ export function getDefenseObjective(stage) {
   return normalizeDefenseObjective(generated);
 }
 
+export function getDefenseObjectiveCacheKey(stage, game) {
+  if (game?.mode !== "darkweb") return String(Number(stage));
+  const room = game.darkWeb?.currentRoom === "core" ? "core" : "side";
+  const mapId = Number(game.darkWeb?.currentMap) || (room === "core" ? 5 : 1);
+  const zone = Number(game.darkWeb?.zone) || 1;
+  return `${zone}:${room}:${mapId}:${Number(stage)}`;
+}
+
 export function formatDefenseObjective(objective) {
   const parts = [];
   if (objective.detections) parts.push(`탐지 ${objective.detections}회`);
@@ -1319,7 +1334,7 @@ export function formatDefenseObjective(objective) {
 }
 
 export function getDefenseObjectiveItems(game) {
-  const objective = getDefenseObjective(game.stage);
+  const objective = getDefenseObjective(game.stage, game);
   if (!objective) return [];
 
   const metrics = game.metrics || createMetrics();

@@ -12,14 +12,14 @@ import {
   clamp,
   rectsOverlap,
   approach,
-} from "./data.js?v=20260723-shield-module";
+} from "./data.js?v=20260808-darkweb-objectives";
 import {
   empowerAttackTargetForCamera,
   getCameraBodyBox,
   getHazardHitbox,
   isEntityInCameraView,
   tickBaseHazardTimers,
-} from "./trap.js?v=20260724-camera-hack-body";
+} from "./trap.js?v=20260808-visible-defense-slots";
 import { recordHacker } from "./replay.js?v=20260807-wall-run-motion";
 import { playSfx, stopSfx } from "./audio.js?v=20260724-stage-effect-cleanup";
 

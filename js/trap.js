@@ -1,7 +1,7 @@
 // trap.js
 // 책임: 함정 생성, 배치, 트랩 판정과 관련된 로직을 담당합니다.
 
-import { TURN, TRAPS, LASER_BASE_LENGTH, cryptoSafeId, getCameraEmpowerCount, getDefenseObjective } from "./data.js?v=20260722-single-camera-boost";
+import { TURN, TRAPS, LASER_BASE_LENGTH, cryptoSafeId, getCameraEmpowerCount, getDefenseObjective, rectsOverlap } from "./data.js?v=20260808-darkweb-objectives";
 
 export const CAMERA_W = 90;
 export const CAMERA_H = 94;
@@ -18,7 +18,12 @@ export function placeTrapAtSlot(game, slot, selectedTrap, selectedRotation, flas
     return false;
   }
 
-  const objective = getDefenseObjective(game.stage);
+  if (isTrapBodyEmbeddedInSolid(game, slot, selectedTrap, selectedRotation)) {
+    flashLog("선택한 함정의 본체가 지형과 겹칩니다. 다른 슬롯이나 방향을 선택하세요.");
+    return false;
+  }
+
+  const objective = getDefenseObjective(game.stage, game);
   const extraUseSource = getExtraTrapUseSource(game, selectedTrap);
   const extraUse = Boolean(extraUseSource);
   if (objective?.maxTraps && countObjectiveTraps(game) >= objective.maxTraps) {
@@ -58,6 +63,29 @@ export function placeTrapAtSlot(game, slot, selectedTrap, selectedRotation, flas
   if (extraUseSource === "generic") game.mods.extraTrapPlacements -= 1;
   game.defenseBudget -= cost;
   flashLog(`${TRAPS[selectedTrap].name}${extraUse ? " 제한 외" : ""} 배치 완료. 남은 함정 토큰 ${game.defenseBudget}`);
+}
+
+function isTrapBodyEmbeddedInSolid(game, slot, type, rotation) {
+  const trapBox = getOrientedTrapBox({
+    type,
+    rotation,
+    x: slot.x,
+    y: slot.y,
+  }, game);
+  const supportPlatform = (game.platforms || []).find((platform) => (
+    Number(platform?.y) === Number(slot.y) &&
+    slot.x >= platform.x &&
+    slot.x <= platform.x + platform.w
+  ));
+
+  return (game.platforms || []).some((platform) => (
+    platform !== supportPlatform &&
+    Number.isFinite(platform?.x) &&
+    Number.isFinite(platform?.y) &&
+    Number.isFinite(platform?.w) &&
+    Number.isFinite(platform?.h) &&
+    rectsOverlap(trapBox, platform)
+  ));
 }
 
 export function undoTrap(game) {
@@ -313,6 +341,7 @@ export function carryDefenseTrapsToNextStage(game, stage) {
     empowered: false,
     closed: false,
     closedTime: 0,
+    needsReanchor: true,
   }));
 
   game.carriedTrapsByStage.set(stage, traps);

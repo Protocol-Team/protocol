@@ -7,18 +7,21 @@ import {
   createDefaultMods,
   createMetrics,
   getStageTime,
+  getFirewallBlockTime,
   getObjective,
   getDefenseObjectiveItems,
+  getDefenseObjectiveCacheKey,
   pickRewards,
   WIDTH,
   HEIGHT,
   CORE_X,
   SAMPLE_STEP,
   pickStageOneLayoutPresetId,
-} from "./data.js?v=20260723-shield-module";
+  TRAPS,
+} from "./data.js?v=20260808-darkweb-objectives";
 import { createHacker, updateAttack, activateHack } from "./player.js?v=20260808-chokepoint-wall-climb";
 import { initUI } from "./ui.js?v=20260807-wall-run-motion";
-import { isAttackStage, getDefenseBudget, getStageDefinition, createPlatforms, createBaseHazards, createTrapSlots } from "./stage.js?v=20260807-entry-step-lift";
+import { isAttackStage, getDefenseBudget, getStageDefinition, createPlatforms, createBaseHazards, createTrapSlots } from "./stage.js?v=20260808-visible-defense-slots";
 import {
   placeTrapAtSlot,
   removeTrapAtPosition,
@@ -26,10 +29,15 @@ import {
   carryDefenseTrapsToNextStage,
   getAllowedRotation,
   getTrapCost,
-} from "./trap.js?v=20260729-camera-triangle-tutorial-v2";
+  getHazardHitbox,
+  getOrientedTrapBox,
+  getTrapHitbox,
+  hasLineOfSight,
+  isEntityInCameraView,
+} from "./trap.js?v=20260808-visible-defense-slots";
 import { startReplay as startReplayMode, updateDefenseReplay } from "./replay.js?v=20260807-wall-run-motion";
 import { playBgm, playLobbyBgm, playSfx, stopAllSfx, stopBgm, stopSfx } from "./audio.js?v=20260724-stage-effect-cleanup";
-import { initLobby } from "./lobby.js?v=20260807-local-qa-season-unlock";
+import { initLobby } from "./lobby.js?v=20260808-pixel-coast-reward";
 import {
   recordDailyMissionEvent,
   recordStageClearForDailyMissions,
@@ -355,20 +363,98 @@ function seedSkippedDefenseTraps(stage) {
   const slots = game.trapSlots || [];
   const count = Math.min(4, 2 + Math.floor(Math.max(0, stage - 3) / 2));
   const types = ["laser", "shock", "camera", "emp"];
-  const traps = slots.slice(0, count).map((slot, index) => {
-    const type = types[index % types.length];
+  const placements = pickRandomTrapPlacements(slots, types.slice(0, count).map((type) => ({ type })));
+  const traps = placements.map(({ slot, request }, index) => {
+    const type = request.type;
     return {
       id: `stage-select-trap-${stage}-${index}`,
       type,
       x: slot.x,
       y: slot.y,
+      slotId: slot.id,
       rotation: type === "laser" ? 90 : 0,
       empowered: false,
       closed: false,
       closedTime: 0,
+      needsReanchor: true,
     };
   });
   if (traps.length > 0) game.carriedTrapsByStage.set(stage, traps);
+}
+
+const TRAP_PLACEMENT_PRIORITY = Object.freeze({ camera: 0, emp: 1, shock: 2, laser: 3 });
+
+function pickRandomTrapPlacements(slots, requests, blockedBoxes = []) {
+  const candidates = pickRandomSlots(slots, slots.length);
+  const orderedRequests = requests
+    .map((request, index) => ({ ...request, index }))
+    .sort((a, b) => (
+      (TRAP_PLACEMENT_PRIORITY[a.type] ?? 99) - (TRAP_PLACEMENT_PRIORITY[b.type] ?? 99)
+    ));
+  const placements = [];
+
+  for (const request of orderedRequests) {
+    const eligible = candidates.filter((slot) => {
+      const box = getOrientedTrapBox({
+        type: request.type,
+        rotation: request.type === "laser" ? 90 : 0,
+        x: slot.x,
+        y: slot.y,
+      }, game);
+      return blockedBoxes.every((blockedBox) => !rectsOverlapForTrapPlacement(box, blockedBox)) &&
+        placements.every((placement) => !rectsOverlapForTrapPlacement(box, placement.box));
+    });
+    if (eligible.length === 0) continue;
+
+    const slot = eligible[Math.floor(Math.random() * eligible.length)];
+    const candidateIndex = candidates.indexOf(slot);
+    candidates.splice(candidateIndex, 1);
+    placements.push({
+      request,
+      slot,
+      box: getOrientedTrapBox({
+        type: request.type,
+        rotation: request.type === "laser" ? 90 : 0,
+        x: slot.x,
+        y: slot.y,
+      }, game),
+    });
+  }
+
+  return placements.sort((a, b) => a.request.index - b.request.index);
+}
+
+function rectsOverlapForTrapPlacement(a, b) {
+  return a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y;
+}
+
+function reanchorCarriedTrapsToStageSlots(stage) {
+  if (!isAttackStage(stage)) return;
+
+  const carriedTraps = game.carriedTrapsByStage.get(stage);
+  if (!Array.isArray(carriedTraps) || carriedTraps.length === 0) return;
+  if (!carriedTraps.some((trap) => trap.needsReanchor)) return;
+
+  const availableSlots = (game.trapSlots || []).filter((slot) => !slot.blocked && !slot.occupied);
+  const blockedBoxes = (game.baseHazards || []).map((hazard) => getHazardHitbox(hazard, game));
+  const placements = pickRandomTrapPlacements(
+    availableSlots,
+    carriedTraps.map((trap) => ({ type: trap.type, trap })),
+    blockedBoxes
+  );
+  const anchoredTraps = placements.map(({ slot, request }, index) => ({
+    ...request.trap,
+    id: request.trap.id || `carried-trap-${stage}-${index}`,
+    x: slot.x,
+    y: slot.y,
+    slotId: slot.id,
+    needsReanchor: false,
+  }));
+
+  game.carriedTrapsByStage.set(stage, anchoredTraps);
 }
 
 function createDarkWebMapUpgrades() {
@@ -407,6 +493,8 @@ function createDarkWebState() {
     currentRoom: "side",
     currentMapCleared: false,
     mapUpgrades: createDarkWebMapUpgrades(),
+    randomHazardsByStage: new Map(),
+    defenseObjectivesByStage: new Map(),
     permanentTrapUpgrades: [],
     sideClearHintBlinkUntil: 0,
     mapReopenHintShown: false,
@@ -592,6 +680,11 @@ function setupStage(options = {}) {
     seedSkippedDefenseTraps(game.stage);
     game.stageSelectionDirect = false;
   }
+  const hasCarriedTraps = (game.carriedTrapsByStage.get(game.stage) || []).length > 0;
+  if (hasCarriedTraps) {
+    game.baseHazards = createBaseHazards(game.stage, game, { includeCarried: false });
+    reanchorCarriedTrapsToStageSlots(game.stage);
+  }
   game.baseHazards = createBaseHazards(game.stage, game);
   if (keepDefenseTraps) {
     restoreTrapSlotEffects(preservedTrapSlotEffects);
@@ -615,6 +708,7 @@ function setupStage(options = {}) {
       restoreDefenseTraps(preservedDefenseTraps);
     }
     game.defenseBudget = keepDefenseTraps ? getRemainingDefenseBudget() : getDefenseBudget(game.stage, game);
+    ensureDarkWebDefenseObjective(game);
     uiModule.setLog(
       keepDefenseTraps
         ? "실패한 배치를 유지했습니다. 함정을 수정한 뒤 다시 리플레이를 시작하세요."
@@ -707,6 +801,185 @@ function syncStageLayoutSelection() {
 function getRemainingDefenseBudget() {
   const spent = game.placedTraps.reduce((total, trap) => total + getTrapRefund(trap), 0);
   return Math.max(0, getDefenseBudget(game.stage, game) - spent);
+}
+
+const DARK_WEB_OBJECTIVE_TRAP_ORDER = ["camera", "laser", "shock", "emp", "firewall"];
+const DARK_WEB_OBJECTIVE_TRAP_SCORE = Object.freeze({
+  camera: 7,
+  laser: 6,
+  shock: 6,
+  emp: 6,
+  firewall: 5,
+});
+
+function ensureDarkWebDefenseObjective(gameState) {
+  if (gameState?.mode !== "darkweb" || gameState.turn !== TURN.DEFENSE_BUILD) return;
+  if (!(gameState.darkWeb?.defenseObjectivesByStage instanceof Map)) {
+    gameState.darkWeb.defenseObjectivesByStage = new Map();
+  }
+
+  const key = getDefenseObjectiveCacheKey(gameState.stage, gameState);
+  if (gameState.darkWeb.defenseObjectivesByStage.has(key)) return;
+  gameState.darkWeb.defenseObjectivesByStage.set(key, createDarkWebDefenseObjective(gameState));
+}
+
+function createDarkWebDefenseObjective(gameState) {
+  const candidates = getDarkWebObjectiveCandidates(gameState);
+  const feasibleTypes = DARK_WEB_OBJECTIVE_TRAP_ORDER.filter((type) => candidates[type].length > 0);
+  const budget = getDefenseBudget(gameState.stage, gameState);
+  const requiredTrapTypes = chooseDarkWebObjectiveTrapTypes(feasibleTypes, candidates, budget, gameState);
+
+  if (requiredTrapTypes.length === 0) {
+    return {
+      maxTraps: Math.max(1, Math.min(3, budget)),
+      requiredTrapTypes: [],
+    };
+  }
+
+  const objective = {
+    maxTraps: requiredTrapTypes.length,
+    requiredTrapTypes,
+  };
+  const hasCamera = requiredTrapTypes.includes("camera");
+  const hasLaser = requiredTrapTypes.includes("laser");
+  const hasEmp = requiredTrapTypes.includes("emp");
+  const hasFirewall = requiredTrapTypes.includes("firewall");
+  const detectorCount = requiredTrapTypes.filter((type) => type === "camera" || type === "laser").length;
+  const cameraEmpowerTarget = hasCamera
+    ? hasFirewall
+      ? "firewall"
+      : hasLaser
+        ? "laser"
+        : hasEmp
+          ? "emp"
+          : ""
+    : "";
+  if (detectorCount > 0) objective.detections = detectorCount + (cameraEmpowerTarget === "laser" ? 1 : 0);
+  if (requiredTrapTypes.includes("shock") || hasFirewall) {
+    let delay = requiredTrapTypes.includes("shock")
+      ? 1 + (gameState.mods.shockDelayBonus || 0)
+      : 0;
+    if (hasFirewall) delay += getFirewallBlockTime(gameState);
+    objective.delay = roundObjectiveValue(delay);
+  }
+  if (hasEmp) objective.energyDrained = cameraEmpowerTarget === "emp" ? 30 : 20;
+  return objective;
+}
+
+function getDarkWebObjectiveCandidates(gameState) {
+  const recording = Array.isArray(gameState.lastAttackRecording) ? gameState.lastAttackRecording : [];
+  const slots = (gameState.trapSlots || []).filter((slot) => !slot.blocked && !slot.occupied);
+  const candidates = Object.fromEntries(DARK_WEB_OBJECTIVE_TRAP_ORDER.map((type) => [type, []]));
+
+  for (const type of DARK_WEB_OBJECTIVE_TRAP_ORDER) {
+    for (const slot of slots) {
+      const rotations = type === "laser" ? [0, 90] : [type === "firewall" ? 90 : 0];
+      if (rotations.some((rotation) => canDarkWebObjectiveTrapTrigger(type, slot, rotation, recording, gameState))) {
+        candidates[type].push(slot);
+      }
+    }
+  }
+
+  return candidates;
+}
+
+function canDarkWebObjectiveTrapTrigger(type, slot, rotation, recording, gameState) {
+  const trap = { type, x: slot.x, y: slot.y, rotation };
+  return recording.some((sample) => canDarkWebObjectiveTrapTriggerAtSample(type, trap, sample, gameState));
+}
+
+function getDarkWebObjectiveTriggerIndex(type, slot, rotation, gameState) {
+  const trap = { type, x: slot.x, y: slot.y, rotation };
+  const recording = Array.isArray(gameState.lastAttackRecording) ? gameState.lastAttackRecording : [];
+  return recording.findIndex((sample) => canDarkWebObjectiveTrapTriggerAtSample(type, trap, sample, gameState));
+}
+
+function canDarkWebObjectiveTrapTriggerAtSample(type, trap, sample, gameState) {
+  const hacker = {
+    x: Number(sample.x) || 0,
+    y: Number(sample.y) || 0,
+    w: 30,
+    h: Number(sample.h) || 54,
+  };
+
+  if (type === "camera") {
+    if (!isEntityInCameraView(hacker, trap, gameState)) return false;
+    const box = getOrientedTrapBox(trap, gameState);
+    return hasLineOfSight(
+      { x: box.x + box.w / 2, y: box.y + 18 },
+      { x: hacker.x + hacker.w / 2, y: hacker.y + hacker.h / 2 },
+      gameState.platforms
+    );
+  }
+
+  if ((type === "shock" || type === "emp") && sample.isSliding) return false;
+  return rectsOverlapForTrapPlacement(hacker, getTrapHitbox(trap, gameState));
+}
+
+function chooseDarkWebObjectiveTrapTypes(feasibleTypes, candidates, budget, gameState) {
+  let best = [];
+
+  function visit(index, selected) {
+    if (selected.length > 4) return;
+    if (index >= feasibleTypes.length) {
+      if (selected.length === 0 || getDarkWebObjectivePlanCost(selected, gameState) > budget) return;
+      if (selected.includes("firewall") && !selected.includes("camera")) return;
+      if (!hasDarkWebObjectivePlacementPlan(selected, candidates, gameState)) return;
+
+      const score = selected.reduce((total, type) => total + (DARK_WEB_OBJECTIVE_TRAP_SCORE[type] || 0), selected.length * 100);
+      const bestScore = best.reduce((total, type) => total + (DARK_WEB_OBJECTIVE_TRAP_SCORE[type] || 0), best.length * 100);
+      if (score > bestScore) best = selected.slice();
+      return;
+    }
+
+    visit(index + 1, selected);
+    visit(index + 1, [...selected, feasibleTypes[index]]);
+  }
+
+  visit(0, []);
+  return DARK_WEB_OBJECTIVE_TRAP_ORDER.filter((type) => best.includes(type));
+}
+
+function hasDarkWebObjectivePlacementPlan(types, candidates, gameState) {
+  const ordered = types.slice().sort((a, b) => candidates[a].length - candidates[b].length);
+  const selected = [];
+
+  function visit(index) {
+    if (index >= ordered.length) {
+      const camera = selected.find((item) => item.type === "camera");
+      const firewall = selected.find((item) => item.type === "firewall");
+      if (camera && firewall) {
+        const cameraIndex = getDarkWebObjectiveTriggerIndex("camera", camera.slot, camera.rotation, gameState);
+        const firewallIndex = getDarkWebObjectiveTriggerIndex("firewall", firewall.slot, firewall.rotation, gameState);
+        if (cameraIndex < 0 || firewallIndex < 0 || cameraIndex > firewallIndex) return false;
+      }
+      return true;
+    }
+    const type = ordered[index];
+    const rotations = type === "laser" ? [0, 90] : [type === "firewall" ? 90 : 0];
+    for (const slot of candidates[type]) {
+      for (const rotation of rotations) {
+        const box = getTrapHitbox({ type, x: slot.x, y: slot.y, rotation }, gameState);
+        if (selected.some((item) => item.slot.id === slot.id || rectsOverlapForTrapPlacement(item.box, box))) continue;
+        selected.push({ type, slot, rotation, box });
+        if (visit(index + 1)) return true;
+        selected.pop();
+      }
+    }
+    return false;
+  }
+
+  return visit(0);
+}
+
+function getDarkWebObjectivePlanCost(types, gameState) {
+  const costs = types.map((type) => TRAPS[type]?.cost || 0).sort((a, b) => b - a);
+  const freePlacements = Math.min(costs.length, Math.max(0, gameState.mods.freeTrapPlacements || 0));
+  return costs.reduce((total, cost, index) => total + (index < freePlacements ? 0 : cost), 0);
+}
+
+function roundObjectiveValue(value) {
+  return Math.round(value * 100) / 100;
 }
 
 function update(dt) {
@@ -1523,6 +1796,7 @@ function showDataTheftEndingRoute() {
 }
 
 function showDeepTraceRoute() {
+  playBgm(BGM_TRACKS.darkWeb, { force: true });
   showDialogueSequence("해커", STAGE_ELEVEN_TRACE_DIALOGUE, {
     finalButtonText: "계속 침입",
     keepCurrentBgm: true,
@@ -1915,7 +2189,8 @@ function startDarkWebMission() {
   game.darkWeb.currentMap = 1;
   game.darkWeb.currentRoom = "side";
   game.stage = getDarkWebStage();
-  setupStage();
+  setupStage({ keepCurrentBgm: true });
+  playGameplayBgmForTurn(game.turn);
   if (!game.tutorialFlags.darkWebMapIntro) {
     game.tutorialFlags.darkWebMapIntro = true;
     uiModule.showDarkWebMapGuideBubbles?.({

@@ -1,13 +1,16 @@
 ﻿// stage.js
 // 책임: 스테이지 로딩과 맵 생성만 담당합니다.
 
-import { GROUND_Y, INFINITE_STAGE_START, LASER_BASE_LENGTH, WIDTH, getDarkWebStageByMapId, getFirewallBlockTime, getStageById } from "./data.js?v=20260807-entry-step-lift";
+import { GROUND_Y, INFINITE_STAGE_START, LASER_BASE_LENGTH, WIDTH, getDarkWebStageByMapId, getFirewallBlockTime, getStageById } from "./data.js?v=20260808-darkweb-objectives";
 import {
+  CAMERA_H,
+  CAMERA_W,
   FLOOR_TRAP_HEIGHT,
   FLOOR_TRAP_SURFACE_LIFT,
   FLOOR_TRAP_WIDTH,
+  getHazardHitbox,
   getOrientedTrapBox,
-} from "./trap.js?v=20260723-floor-trap-lift";
+} from "./trap.js?v=20260808-visible-defense-slots";
 
 const TRAP_SLOT_SPACING = 48;
 const START_SLOT_BLOCK_X = 150;
@@ -16,6 +19,8 @@ const HACKER_START_WIDTH = 30;
 const HACKER_START_HEIGHT = 54;
 const OVERHEAD_SLOT_BLOCK_DISTANCE = 56;
 const OVERHEAD_SLOT_BLOCK_MARGIN = 4;
+const ATTACK_SLOT_OVERHEAD_BLOCK_DISTANCE = CAMERA_H;
+const ATTACK_SLOT_OVERHEAD_BLOCK_MARGIN = CAMERA_W / 2;
 const DEFENSE_SOLID_COVER_DISTANCE = 12;
 const DEFENSE_SOLID_COVER_MARGIN = 2;
 const ROUTE_HINT_RADIUS = 112;
@@ -26,6 +31,8 @@ const HACKER_REPLAY_WIDTH = 30;
 const STAGE_HAZARD_SLOT_MAX_DISTANCE = TRAP_SLOT_SPACING * 1.75;
 const FALLBACK_PLATFORM_TILE_HEIGHT = 48;
 const STAGE_HAZARD_SURFACE_SNAP_DISTANCE = 72;
+const DARK_WEB_EXTRA_HAZARD_COUNT = 1;
+const TRAP_PLACEMENT_PRIORITY = Object.freeze({ camera: 0, emp: 1, shock: 2, laser: 3 });
 
 const STAGE_LAYOUT_GUIDE_ROLES = new Set([
   "entry-step",
@@ -179,7 +186,7 @@ function createFallbackPlatforms() {
   ];
 }
 
-export function createBaseHazards(stage, game) {
+export function createBaseHazards(stage, game, { includeCarried = true } = {}) {
   if (!isAttackStage(stage)) return [];
 
   const stageData = getStageDefinition(stage, game);
@@ -190,8 +197,137 @@ export function createBaseHazards(stage, game) {
   const normalizedHazards = hazards.map((hazard) =>
     normalizeStageHazard(normalizeStageHazardSurface(hazard, stage, game), game.platforms)
   );
-  normalizedHazards.push(...getCarriedHazards(stage, game));
-  return normalizedHazards;
+  const carriedHazards = includeCarried ? getCarriedHazards(stage, game) : [];
+  const randomHazards = createDarkWebRandomHazards(
+    stage,
+    game,
+    [...normalizedHazards, ...carriedHazards]
+  );
+  return [...normalizedHazards, ...randomHazards, ...carriedHazards];
+}
+
+function createDarkWebRandomHazards(stage, game, blockedHazards) {
+  if (game?.mode !== "darkweb" || !isAttackStage(stage)) return [];
+
+  if (!(game.darkWeb?.randomHazardsByStage instanceof Map)) {
+    if (!game.darkWeb) return [];
+    game.darkWeb.randomHazardsByStage = new Map();
+  }
+
+  const cache = game.darkWeb.randomHazardsByStage;
+  const cacheKey = getDarkWebHazardCacheKey(stage, game);
+  let placements = cache.get(cacheKey);
+  if (!Array.isArray(placements)) {
+    const stageData = getStageDefinition(stage, game);
+    const slots = createAttackTrapSlots(stage, game, stageData);
+    const availableTypes = [...new Set((stageData?.trapNodes || [])
+      .map((hazard) => hazard.type)
+      .filter((type) => type && TRAP_PLACEMENT_PRIORITY[type] !== undefined))];
+    const typePool = availableTypes.length > 0 ? availableTypes : ["shock", "laser", "camera"];
+    const requests = Array.from({ length: DARK_WEB_EXTRA_HAZARD_COUNT }, (_, index) => ({
+      type: typePool[Math.floor(Math.random() * typePool.length)],
+      index,
+    }));
+    const blockedBoxes = (blockedHazards || [])
+      .map((hazard) => getHazardHitbox(hazard, game))
+      .filter(isValidTrapPlacementBox);
+    placements = pickRandomStageTrapPlacements(slots, requests, blockedBoxes, game)
+      .map(({ request, slot }) => ({
+        id: `darkweb-random-trap-${stage}-${request.index}`,
+        type: request.type,
+        x: slot.x,
+        y: slot.y,
+        rotation: request.type === "laser" ? 90 : 0,
+      }));
+    cache.set(cacheKey, placements);
+  }
+
+  return placements.map((placement) => createDarkWebRandomHazard(placement, game));
+}
+
+function getDarkWebHazardCacheKey(stage, game) {
+  const room = game.darkWeb?.currentRoom === "core" ? "core" : "side";
+  const mapId = Number(game.darkWeb?.currentMap) || (room === "core" ? 5 : 1);
+  const zone = Number(game.darkWeb?.zone) || 1;
+  return `${zone}:${room}:${mapId}:${stage}`;
+}
+
+function pickRandomStageTrapPlacements(slots, requests, blockedBoxes, game) {
+  const candidates = shuffleStageTrapSlots(slots);
+  const orderedRequests = requests
+    .map((request, index) => ({ ...request, index }))
+    .sort((a, b) => (
+      (TRAP_PLACEMENT_PRIORITY[a.type] ?? 99) - (TRAP_PLACEMENT_PRIORITY[b.type] ?? 99)
+    ));
+  const placements = [];
+
+  for (const request of orderedRequests) {
+    const eligible = candidates.filter((slot) => {
+      const box = getOrientedTrapBox({
+        type: request.type,
+        rotation: request.type === "laser" ? 90 : 0,
+        x: slot.x,
+        y: slot.y,
+      }, game);
+      return blockedBoxes.every((blockedBox) => !rectsOverlapLocal(box, blockedBox)) &&
+        placements.every((placement) => !rectsOverlapLocal(box, placement.box));
+    });
+    if (eligible.length === 0) continue;
+
+    const slot = eligible[Math.floor(Math.random() * eligible.length)];
+    const candidateIndex = candidates.indexOf(slot);
+    candidates.splice(candidateIndex, 1);
+    placements.push({
+      request,
+      slot,
+      box: getOrientedTrapBox({
+        type: request.type,
+        rotation: request.type === "laser" ? 90 : 0,
+        x: slot.x,
+        y: slot.y,
+      }, game),
+    });
+  }
+
+  return placements.sort((a, b) => a.request.index - b.request.index);
+}
+
+function shuffleStageTrapSlots(slots) {
+  const shuffled = [...(slots || [])];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
+function createDarkWebRandomHazard(placement, game) {
+  const base = {
+    id: placement.id,
+    type: placement.type,
+    empowered: false,
+    closed: false,
+    closedTime: 0,
+    darkWebRandom: true,
+  };
+  if (placement.type === "camera") {
+    return { ...base, x: placement.x, y: placement.y };
+  }
+
+  return {
+    ...base,
+    ...getOrientedTrapBox(placement, game),
+  };
+}
+
+function isValidTrapPlacementBox(box) {
+  return box &&
+    Number.isFinite(box.x) &&
+    Number.isFinite(box.y) &&
+    Number.isFinite(box.w) &&
+    Number.isFinite(box.h) &&
+    box.w > 0 &&
+    box.h > 0;
 }
 
 export function getCarriedHazards(stage, game) {
@@ -226,6 +362,7 @@ export function createTrapSlots(stage, game) {
 
 function createAttackTrapSlots(stage, game, stageData) {
   const slots = [];
+  const slotKeys = new Set();
   let id = 0;
 
   for (const platform of game.platforms) {
@@ -241,6 +378,15 @@ function createAttackTrapSlots(stage, game, stageData) {
       if (x < 80 || x > WIDTH - 70) continue;
       if (Math.abs(x - game.core.x) < 46 && y >= GROUND_Y - 4) continue;
       if (isSlotBlockedByNoSlotPlatform(x, y, game.platforms)) continue;
+      if (isTrapSlotBlockedBySolid(x, y, platform, game.platforms, game)) continue;
+      if (isSlotCoveredByOverheadSolid(
+        x,
+        y,
+        platform,
+        game.platforms,
+        ATTACK_SLOT_OVERHEAD_BLOCK_DISTANCE,
+        ATTACK_SLOT_OVERHEAD_BLOCK_MARGIN
+      )) continue;
       if (!isStrategicTrapSlot({
         stageData,
         platform,
@@ -250,6 +396,9 @@ function createAttackTrapSlots(stage, game, stageData) {
         replayPath: game.lastAttackRecording,
       })) continue;
       if (isNearPlayerStartSlot(stage, x, y, game)) continue;
+      const slotKey = `${x}:${y}`;
+      if (slotKeys.has(slotKey)) continue;
+      slotKeys.add(slotKey);
       slots.push({ x, y, id, occupied: false });
       id += 1;
     }
@@ -260,6 +409,7 @@ function createAttackTrapSlots(stage, game, stageData) {
 
 function createDefenseTrapSlots(stage, game) {
   const slots = [];
+  const slotKeys = new Set();
   let id = 0;
   const stageData = getStageDefinition(stage, game);
   const debug = createDefenseTrapSlotDebug(stageData);
@@ -306,7 +456,13 @@ function createDefenseTrapSlots(stage, game) {
         countDefenseTrapSlotRemoval(debug, debugRow, "removedBySpawn");
         continue;
       }
+      const slotKey = `${x}:${y}`;
+      if (slotKeys.has(slotKey)) {
+        countDefenseTrapSlotRemoval(debug, debugRow, "removedByDuplicate");
+        continue;
+      }
       countDefenseTrapSlotCreated(debug, debugRow);
+      slotKeys.add(slotKey);
       slots.push({
         x,
         y,
@@ -343,6 +499,9 @@ function getStageHazardsForDefenseSlots(stage, game) {
   // Direct defense-stage selection has no live attack snapshot. In that one
   // case, reconstruct only the immediately preceding attack-stage hazards.
   const previousAttackStage = Math.max(1, Number(stage) - 1);
+  if (game?.mode === "darkweb" && isAttackStage(previousAttackStage)) {
+    return createBaseHazards(previousAttackStage, game, { includeCarried: false });
+  }
   const previousAttackData = getStageDefinition(previousAttackStage, game);
   return createStageHazardsForSlotBlocking(previousAttackStage, game, previousAttackData);
 }
@@ -424,7 +583,7 @@ function createFallbackStageHazards(stage) {
     hazards.push({
       id: "fallback-laser-advanced-step",
       type: "laser",
-      x: 928,
+      x: 880,
       y: 248,
       w: 15,
       h: 118,
@@ -619,20 +778,44 @@ function isOnStrategicPlatform(platform) {
   return platform.role === "main-route" || STAGE_LAYOUT_GUIDE_ROLES.has(platform.role);
 }
 
-function isSlotCoveredByOverheadSolid(x, y, currentPlatform, platforms) {
+function isSlotCoveredByOverheadSolid(
+  x,
+  y,
+  currentPlatform,
+  platforms,
+  maxDistance = OVERHEAD_SLOT_BLOCK_DISTANCE,
+  horizontalMargin = OVERHEAD_SLOT_BLOCK_MARGIN
+) {
   for (const platform of platforms || []) {
     if (platform === currentPlatform || !isValidPlatformRect(platform)) continue;
     if (platform.y >= y) continue;
 
     const verticalGap = y - (platform.y + platform.h);
-    if (verticalGap < 0 || verticalGap > OVERHEAD_SLOT_BLOCK_DISTANCE) continue;
+    if (verticalGap < 0 || verticalGap > maxDistance) continue;
 
-    const horizontallyCovered = x >= platform.x - OVERHEAD_SLOT_BLOCK_MARGIN &&
-      x <= platform.x + platform.w + OVERHEAD_SLOT_BLOCK_MARGIN;
+    const horizontallyCovered = x >= platform.x - horizontalMargin &&
+      x <= platform.x + platform.w + horizontalMargin;
     if (horizontallyCovered) return true;
   }
 
   return false;
+}
+
+function isTrapSlotBlockedBySolid(x, y, currentPlatform, platforms, game) {
+  const cameraScale = Math.max(0.5, game?.mods?.cameraRangeScale || 1);
+  const footprintWidth = CAMERA_W * cameraScale;
+  const trapFootprint = {
+    x: x - footprintWidth / 2,
+    y: y - CAMERA_H,
+    w: footprintWidth,
+    h: CAMERA_H,
+  };
+
+  return (platforms || []).some((platform) => (
+    platform !== currentPlatform &&
+    isValidPlatformRect(platform) &&
+    rectsOverlapLocal(trapFootprint, platform)
+  ));
 }
 
 function isDefenseSlotCoveredBySolid(x, y, currentPlatform, platforms) {

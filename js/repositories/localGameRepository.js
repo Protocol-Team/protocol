@@ -74,6 +74,13 @@ export function savePurchasedSkins(skinIds) {
   writeStorageValue(PURCHASED_AI_SKINS_STORAGE_KEY, JSON.stringify(normalizeSkinIds(skinIds)));
 }
 
+export function grantAiSkin(skinId) {
+  const purchased = getPurchasedSkins();
+  if (!purchased.includes(skinId)) purchased.push(skinId);
+  savePurchasedSkins(purchased);
+  return purchased;
+}
+
 export function getSelectedSkin() {
   const selectedSkin = readStorageValue(SELECTED_AI_SKIN_STORAGE_KEY);
   return selectedSkin || DEFAULT_SELECTED_SKIN;

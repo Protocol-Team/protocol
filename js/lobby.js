@@ -13,7 +13,7 @@ import {
   saveSelectedSkin,
   saveSelectedHackerSkin,
   saveSelectedLobbySkin,
-} from "./repositories/localGameRepository.js?v=20260807-local-qa-season-unlock";
+} from "./repositories/localGameRepository.js?v=20260808-pixel-coast-reward";
 import { HACKER_SKINS, LOBBY_SKINS } from "./skinRegistry.js?v=20260807-skin-reward-copy";
 import {
   getDailyMissionState,
@@ -41,7 +41,7 @@ import {
   getSeasonPassState,
   initSeasonPass,
   unlockSeasonPassPremium,
-} from "./repositories/seasonPassRepository.js?v=20260806-summer-season";
+} from "./repositories/seasonPassRepository.js?v=20260808-pixel-coast-reward";
 
 const CLASSIC_CLEAR_STORAGE_KEY = "traceProtocolClassicStage11Returned";
 const PROFILE_STORAGE_KEY = "traceProtocolProfileSettings";
@@ -72,10 +72,11 @@ const SELECTABLE_AI_SKINS = [
   {
     id: "glitch",
     name: "픽셀 속 해안가",
-    desc: "화면 속 뜨거운 피서",
+    desc: "프리미엄 패스 Lv.20 보상 스킨",
     preview: "./assets/images/AI_skin_glitch/preview.png",
     lobbyPreview: { scale: 1.72, offsetY: -30, focusY: 27, originY: 27 },
-    owned: true,
+    unlockSource: "premium-pass-level-20",
+    owned: false,
   },
 ];
 const SELECTABLE_HACKER_SKINS = Object.values(HACKER_SKINS);
@@ -764,7 +765,8 @@ export function initLobby({
           <b class="lobby-skin-empty-mark">EMPTY</b>
           <div class="lobby-skin-card-copy"><strong>COMMING SOON</strong></div>
         </button>`;
-      const requiredLevel = skin.id === "summerOverride" ? 10 : skin.id === "summerSeasonLobby" ? 15 : 0;
+      const unlockMatch = /^premium-pass-level-(\d+)$/.exec(skin.unlockSource || "");
+      const requiredLevel = unlockMatch ? Number(unlockMatch[1]) : 0;
       const claimKey = requiredLevel ? `premium-${requiredLevel}` : "";
       const owned = isAi ? isSkinOwned(skin.id) : ownedIds.includes(skin.id);
       const claimable = !owned && requiredLevel > 0 && seasonState.premiumUnlocked
@@ -1061,7 +1063,7 @@ export function initLobby({
     event.stopPropagation();
     startLobbyBgm();
     closeLobbyPopups();
-    showStageSelect();
+    setModePanelOpen(true);
   });
 
   modePanel.addEventListener("click", (event) => {
