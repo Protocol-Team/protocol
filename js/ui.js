@@ -30,7 +30,7 @@ import {
   setSfxVolume,
   unlockAudio,
 } from "./audio.js?v=20260724-stage-effect-cleanup";
-import { getSelectedHackerSkin, getSelectedSkin } from "./repositories/localGameRepository.js?v=20260806-summer-season";
+import { getSelectedHackerSkin, getSelectedSkin } from "./repositories/localGameRepository.js?v=20260809-summer-ownership-fix";
 import { HACKER_SKINS } from "./skinRegistry.js?v=20260806-summer-season";
 
 const CANVAS_WIDTH = 1200;
@@ -85,7 +85,6 @@ const cameraArtLayers = new WeakMap();
 const stageImages = createStageImages();
 const backgroundImages = createBackgroundImages();
 const HACKER_IMAGE_BASE_URL = HACKER_SKINS.classic.animationBaseUrl;
-const HACKER_SCRIPT_IMAGE_BASE_URL = new URL("../assets/images/hacker_script/", import.meta.url);
 const AI_SCRIPT_IMAGE_BASE_URL = new URL("../assets/images/AI_script/", import.meta.url);
 const AI_ANDROID_SCRIPT_IMAGE_BASE_URL = new URL("../assets/images/AI_skin1/", import.meta.url);
 const AI_GLITCH_SCRIPT_IMAGE_BASE_URL = new URL("../assets/images/AI_skin_glitch/", import.meta.url);
@@ -127,13 +126,6 @@ const HACKING_EFFECT_ANIMATION = {
   files: createNumberedFrameFiles("hacking_effect", 12),
   frameSeconds: Array.from({ length: 12 }, () => HACKING_EFFECT_DURATION / 12),
 };
-const HACKER_SCRIPT_IMAGE_FILES = {
-  idle: "idle.png",
-  happy: "happy.png",
-  frown: "frown.png",
-  angry: "angry.png",
-  surprised: "surprised.png",
-};
 const AI_SCRIPT_IMAGE_FILES = {
   idle: "idle.gif",
   error: "error.gif",
@@ -142,7 +134,6 @@ const AI_SCRIPT_IMAGE_FILES = {
 };
 const hackerImagesBySkin = createHackerImages();
 const hackingEffectImages = createFrameAnimation(HACKING_EFFECT_ANIMATION);
-const hackerScriptImages = createScriptImages(HACKER_SCRIPT_IMAGE_FILES, HACKER_SCRIPT_IMAGE_BASE_URL);
 const aiScriptImages = createScriptImages(AI_SCRIPT_IMAGE_FILES, AI_SCRIPT_IMAGE_BASE_URL);
 const aiScriptImagesBySkin = createAiScriptImagesBySkin();
 const DEFAULT_BACKGROUND_LAYERS = {
@@ -292,6 +283,30 @@ function createAiScriptImagesBySkin() {
 function getSelectedAiSkin() {
   const stored = getSelectedSkin();
   return AI_SCRIPT_SKINS[stored] ? stored : "classic";
+}
+
+function resolveHackerPortraitSources(expression, selectedSkinId = getSelectedHackerSkin()) {
+  const classicPortraits = HACKER_SKINS.classic.portraits;
+  const normalizedExpression = Object.hasOwn(classicPortraits, expression) ? expression : "idle";
+  const selectedSkin = HACKER_SKINS[selectedSkinId] || HACKER_SKINS.classic;
+  const sources = selectedSkin.id === HACKER_SKINS.classic.id
+    ? [classicPortraits[normalizedExpression], classicPortraits.idle]
+    : [selectedSkin.portraits?.[normalizedExpression], classicPortraits[normalizedExpression], classicPortraits.idle];
+
+  return [...new Set(sources.filter(Boolean))];
+}
+
+function setImageSourceWithFallback(image, sources) {
+  let sourceIndex = 0;
+  image.onerror = () => {
+    sourceIndex += 1;
+    if (sourceIndex < sources.length) {
+      image.src = sources[sourceIndex];
+      return;
+    }
+    image.onerror = null;
+  };
+  image.src = sources[sourceIndex];
 }
 
 function shouldSkipGuideBubbles() {
@@ -842,20 +857,23 @@ export function initUI(callbacks) {
 
     const isAi = speaker === "ai";
     const aiSkinId = getSelectedAiSkin();
+    const hackerSkinId = isAi ? HACKER_SKINS.classic.id : getSelectedHackerSkin();
     const aiSkin = AI_SCRIPT_SKINS[aiSkinId] || AI_SCRIPT_SKINS.classic;
-    const images = isAi
-      ? (aiScriptImagesBySkin[aiSkinId] || aiScriptImagesBySkin.classic || aiScriptImages)
-      : hackerScriptImages;
-    const baseUrl = isAi ? aiSkin.imageBaseUrl : HACKER_SCRIPT_IMAGE_BASE_URL;
+    const images = aiScriptImagesBySkin[aiSkinId] || aiScriptImagesBySkin.classic || aiScriptImages;
     const image = images[portrait] || images.idle;
     const frame = document.createElement("div");
     frame.className = `dialogue-portrait ${isAi ? `dialogue-portrait-ai ${aiSkin.className}` : "dialogue-portrait-hacker"}`;
-    if (isAi) frame.dataset.skin = aiSkinId;
+    frame.dataset.skin = isAi ? aiSkinId : hackerSkinId;
+    if (!isAi && hackerSkinId === "summerOverride") frame.classList.add("dialogue-portrait-summer-override");
     frame.setAttribute("aria-hidden", "true");
 
     const img = document.createElement("img");
     img.alt = "";
-    img.src = image?.src || new URL(isAi ? aiSkin.files.idle : "idle.png", baseUrl).href;
+    if (isAi) {
+      img.src = image?.src || new URL(aiSkin.files.idle, aiSkin.imageBaseUrl).href;
+    } else {
+      setImageSourceWithFallback(img, resolveHackerPortraitSources(portrait, hackerSkinId));
+    }
     frame.appendChild(img);
     ui.overlayCard.prepend(frame);
     ui.overlayCard.classList.add("has-portrait");

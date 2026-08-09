@@ -11,6 +11,14 @@ const CLASSIC_HACKER_ANIMATIONS = {
 };
 
 const SUMMER_ROOT = new URL("../assets/images/Summer/", import.meta.url);
+const CLASSIC_HACKER_PORTRAIT_ROOT = new URL("../assets/images/hacker_script/", import.meta.url);
+const SUMMER_HACKER_PORTRAIT_ROOT = new URL("../assets/images/Summer_script/", import.meta.url);
+
+function createPortraitSet(root, files) {
+  return Object.fromEntries(
+    Object.entries(files).map(([expression, file]) => [expression, new URL(file, root).href])
+  );
+}
 
 export const HACKER_SKINS = Object.freeze({
   classic: {
@@ -22,6 +30,13 @@ export const HACKER_SKINS = Object.freeze({
     animationType: "frames",
     animationBaseUrl: new URL("../assets/images/hacker_new_frames/", import.meta.url),
     animations: CLASSIC_HACKER_ANIMATIONS,
+    portraits: createPortraitSet(CLASSIC_HACKER_PORTRAIT_ROOT, {
+      idle: "idle.png",
+      happy: "happy.png",
+      frown: "frown.png",
+      angry: "angry.png",
+      surprised: "surprised.png",
+    }),
     renderScale: {},
     lobbyPreview: { scale: 1.55, offsetX: -12, offsetY: -16, focusY: 28, originY: 32 },
   },
@@ -43,6 +58,13 @@ export const HACKER_SKINS = Object.freeze({
       slide: new URL("summer_slide.gif", SUMMER_ROOT).href,
       climb: new URL("summer_wall_climb.gif", SUMMER_ROOT).href,
     },
+    portraits: createPortraitSet(SUMMER_HACKER_PORTRAIT_ROOT, {
+      idle: "idle.png",
+      happy: "happy.png",
+      frown: "frown.png",
+      angry: "angry.png",
+      surprised: "suprised.png",
+    }),
     sourceCrop: {
       idle: { x: 210, y: 90, w: 251, h: 480 },
       run: { x: 144, y: 190, w: 351, h: 341 },

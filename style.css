@@ -4321,6 +4321,12 @@ kbd {
   filter: drop-shadow(0 0 18px rgba(187, 92, 255, 0.42)) drop-shadow(0 12px 18px rgba(0, 0, 0, 0.5));
 }
 
+.dialogue-portrait-hacker.dialogue-portrait-summer-override img {
+  object-position: center top;
+  transform: translate(-5px, -4px) scale(1.14);
+  transform-origin: center top;
+}
+
 .dialogue-portrait-ai img {
   object-fit: contain;
   object-position: center bottom;

@@ -20,7 +20,7 @@ import {
   TRAPS,
 } from "./data.js?v=20260808-darkweb-objectives";
 import { createHacker, updateAttack, activateHack } from "./player.js?v=20260808-chokepoint-wall-climb";
-import { initUI } from "./ui.js?v=20260807-wall-run-motion";
+import { initUI } from "./ui.js?v=20260809-summer-ownership-fix";
 import { isAttackStage, getDefenseBudget, getStageDefinition, createPlatforms, createBaseHazards, createTrapSlots } from "./stage.js?v=20260808-visible-defense-slots";
 import {
   placeTrapAtSlot,
@@ -37,12 +37,12 @@ import {
 } from "./trap.js?v=20260808-visible-defense-slots";
 import { startReplay as startReplayMode, updateDefenseReplay } from "./replay.js?v=20260807-wall-run-motion";
 import { playBgm, playLobbyBgm, playSfx, stopAllSfx, stopBgm, stopSfx } from "./audio.js?v=20260724-stage-effect-cleanup";
-import { initLobby } from "./lobby.js?v=20260808-pixel-coast-reward";
+import { initLobby } from "./lobby.js?v=20260809-summer-ownership-fix";
 import {
   recordDailyMissionEvent,
   recordStageClearForDailyMissions,
 } from "./repositories/dailyMissionRepository.js?v=20260803-currency-v1";
-import { getBestStage, resetBestStage, saveBestStage } from "./repositories/localGameRepository.js?v=20260806-summer-season";
+import { getBestStage, resetBestStage, saveBestStage } from "./repositories/localGameRepository.js?v=20260809-summer-ownership-fix";
 import { consumeShopItem, getShopInventory } from "./repositories/shopRepository.js";
 
 const BGM_TRACKS = {

@@ -13,7 +13,7 @@ import {
   saveSelectedSkin,
   saveSelectedHackerSkin,
   saveSelectedLobbySkin,
-} from "./repositories/localGameRepository.js?v=20260808-pixel-coast-reward";
+} from "./repositories/localGameRepository.js?v=20260809-summer-ownership-fix";
 import { HACKER_SKINS, LOBBY_SKINS } from "./skinRegistry.js?v=20260807-skin-reward-copy";
 import {
   getDailyMissionState,
@@ -41,7 +41,7 @@ import {
   getSeasonPassState,
   initSeasonPass,
   unlockSeasonPassPremium,
-} from "./repositories/seasonPassRepository.js?v=20260808-pixel-coast-reward";
+} from "./repositories/seasonPassRepository.js?v=20260809-summer-ownership-fix";
 
 const CLASSIC_CLEAR_STORAGE_KEY = "traceProtocolClassicStage11Returned";
 const PROFILE_STORAGE_KEY = "traceProtocolProfileSettings";
