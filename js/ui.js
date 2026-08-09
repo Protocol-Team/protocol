@@ -31,7 +31,7 @@ import {
   unlockAudio,
 } from "./audio.js?v=20260724-stage-effect-cleanup";
 import { getSelectedHackerSkin, getSelectedSkin } from "./repositories/localGameRepository.js?v=20260809-summer-ownership-fix";
-import { HACKER_SKINS } from "./skinRegistry.js?v=20260806-summer-season";
+import { HACKER_SKINS } from "./skinRegistry.js?v=20260809-pass-frame-extraction";
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 540;

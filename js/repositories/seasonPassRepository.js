@@ -1,7 +1,7 @@
 import { addDailyMissionUsb } from "./dailyMissionRepository.js";
 import { SHOP_ITEMS, grantShopItem } from "./shopRepository.js";
 import { grantAiSkin, grantHackerSkin, grantLobbySkin } from "./localGameRepository.js?v=20260809-summer-ownership-fix";
-import { SUMMER_SEASON_ID } from "../skinRegistry.js?v=20260806-summer-season";
+import { SUMMER_SEASON_ID } from "../skinRegistry.js?v=20260809-pass-frame-extraction";
 
 const STORAGE_KEY = "traceProtocolSeasonPass";
 const SCHEMA_VERSION = 1;

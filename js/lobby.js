@@ -14,7 +14,7 @@ import {
   saveSelectedHackerSkin,
   saveSelectedLobbySkin,
 } from "./repositories/localGameRepository.js?v=20260809-summer-ownership-fix";
-import { HACKER_SKINS, LOBBY_SKINS } from "./skinRegistry.js?v=20260807-skin-reward-copy";
+import { HACKER_SKINS, LOBBY_SKINS } from "./skinRegistry.js?v=20260809-pass-frame-extraction";
 import {
   getDailyMissionState,
   getDailyUsbHistory,

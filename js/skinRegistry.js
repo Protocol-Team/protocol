@@ -20,6 +20,16 @@ function createPortraitSet(root, files) {
   );
 }
 
+const SUMMER_HACKER_ANIMATIONS = {
+  idle: { directory: "frames/idle", frameCount: 6, frameSeconds: Array(6).fill(0.15) },
+  run: { directory: "frames/run", frameCount: 8, frameSeconds: Array(8).fill(0.09) },
+  jumpStart: { directory: "frames/jump", frameCount: 6, frameSeconds: Array(6).fill(0.09) },
+  jumpAir: { directory: "frames/jump", frameCount: 6, frameSeconds: Array(6).fill(0.09) },
+  jumpLanding: { directory: "frames/landing", frameCount: 3, frameSeconds: Array(3).fill(0.12) },
+  slide: { directory: "frames/slide", frameCount: 8, frameSeconds: [0.11, 0.06, 0.07, 0.12, 0.11, 0.10, 0.10, 0.15] },
+  climb: { directory: "frames/climb", frameCount: 10, frameSeconds: [0.10, 0.11, 0.10, 0.11, 0.10, 0.11, 0.10, 0.11, 0.10, 0.14] },
+};
+
 export const HACKER_SKINS = Object.freeze({
   classic: {
     id: "classic",
@@ -48,16 +58,9 @@ export const HACKER_SKINS = Object.freeze({
     seasonId: SUMMER_SEASON_ID,
     unlockSource: "premium-pass-level-10",
     preview: new URL("concepart.png", SUMMER_ROOT).href,
-    animationType: "gif",
-    animations: {
-      idle: new URL("summer_idle.gif", SUMMER_ROOT).href,
-      run: new URL("summer_run.gif", SUMMER_ROOT).href,
-      jumpStart: new URL("summer_jump.gif", SUMMER_ROOT).href,
-      jumpAir: new URL("summer_jump.gif", SUMMER_ROOT).href,
-      jumpLanding: new URL("summer_landing.gif", SUMMER_ROOT).href,
-      slide: new URL("summer_slide.gif", SUMMER_ROOT).href,
-      climb: new URL("summer_wall_climb.gif", SUMMER_ROOT).href,
-    },
+    animationType: "frames",
+    animationBaseUrl: SUMMER_ROOT,
+    animations: SUMMER_HACKER_ANIMATIONS,
     portraits: createPortraitSet(SUMMER_HACKER_PORTRAIT_ROOT, {
       idle: "idle.png",
       happy: "happy.png",
@@ -65,15 +68,6 @@ export const HACKER_SKINS = Object.freeze({
       angry: "angry.png",
       surprised: "suprised.png",
     }),
-    sourceCrop: {
-      idle: { x: 210, y: 90, w: 251, h: 480 },
-      run: { x: 144, y: 190, w: 351, h: 341 },
-      jumpStart: { x: 51, y: 57, w: 425, h: 483 },
-      jumpAir: { x: 51, y: 57, w: 425, h: 483 },
-      jumpLanding: { x: 135, y: 71, w: 387, h: 499 },
-      slide: { x: 108, y: 191, w: 424, h: 379 },
-      climb: { x: 214, y: 186, w: 212, h: 384 },
-    },
     renderScale: {},
     lobbyPreview: { scale: 1.05, offsetY: 0, focusY: 34, originY: 34 },
   },

@@ -1,4 +1,4 @@
-import { isValidHackerSkinId, isValidLobbySkinId } from "../skinRegistry.js?v=20260806-summer-season";
+import { isValidHackerSkinId, isValidLobbySkinId } from "../skinRegistry.js?v=20260809-pass-frame-extraction";
 
 const BEST_STAGE_STORAGE_KEY = "traceProtocolBest";
 const PURCHASED_AI_SKINS_STORAGE_KEY = "traceProtocolPurchasedAiSkins";
