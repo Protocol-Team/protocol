@@ -1088,6 +1088,7 @@ export function initLobby({
       event.preventDefault();
       event.stopPropagation();
       const stage = Number(stageButton.dataset.stage) || 1;
+      if (stage % 2 === 0) return;
       returnToDailyMissionFromStageSelect = false;
       setStageSelectOpen(false);
       hideLobby();
@@ -1423,7 +1424,10 @@ function createStageSelectPanel() {
     </div>
     <div class="lobby-stage-scroller" tabindex="0" aria-label="스테이지 목록">
       <div class="lobby-stage-track">
-        ${Array.from({ length: 11 }, (_, index) => `<button class="lobby-stage-card" type="button" data-stage="${index + 1}"><span>STAGE</span><strong>${index + 1}</strong><small>${index % 2 === 0 ? "ATTACK" : "DEFENSE"}</small></button>`).join("")}
+        ${Array.from({ length: 11 }, (_, index) => index + 1)
+          .filter((stage) => stage % 2 === 1)
+          .map((stage) => `<button class="lobby-stage-card" type="button" data-stage="${stage}"><span>STAGE</span><strong>${stage}</strong><small>ATTACK</small></button>`)
+          .join("")}
       </div>
     </div>
     <p class="lobby-stage-scroll-hint">← → 또는 좌우로 스크롤</p>
